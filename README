@@ -1,26 +1,18 @@
 = capistrano-extensions
 
-* FIX (url)
+* http://github.com/jtrupiano/capistrano-extensions
+
+== INCOMPLETE ==
+* Missing a detailed sample config file
 
 == DESCRIPTION/FEATURES
 
 This gem provides a base set of Capistrano extensions including the following:
-  * helpers for handling public asset folders (e.g. created by the file_column plugin)
-  * auto-syncing server gems (via integration with Chad Wooley's GemInstaller gem)
+  * tasks/helpers for handling public asset folders (e.g. created by the file_column plugin)
+  * tasks/helpers for auto-syncing server gems (via integration with Chad Wooley's GemInstaller gem)
   * helpers for dealing with multiple deployable environments (e.g. staging, prodtest, production)
-  * logfile helpers (pulling logfiles, etc.)
-  * database/asset synchronization from production to local environment
-
-
-== GOTCHAS
-
-
-  
-  
-== FEATURES
-  
-* Enforces that Chad Wooley's GemInstaller gem is installed on the
-  server.  It *****
+  * tasks for working with remote logfiles
+  * tasks for database/asset synchronization from production back to local environments
 
 == NEW PROPERTIES --> DEFAULTS
   # Provides a way to specify which uploadable asset directories (that live in public/)
@@ -102,11 +94,12 @@ This gem provides a base set of Capistrano extensions including the following:
 
 == REQUIREMENTS:
 
-* FIX (list of requirements)
+* Capistrano >= 2.3.0
 
 == INSTALL:
 
-* FIX (sudo gem install, anything else)
+* rake gem
+* sudo gem install pkg/capistrano-extensions-0.1.0.gem --local
 
 == LICENSE:
 
