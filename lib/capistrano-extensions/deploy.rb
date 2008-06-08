@@ -1,7 +1,5 @@
 # Overrides the majority of recipes from Capistrano's deploy recipe set.
 Capistrano::Configuration.instance(:must_exist).load do
-  abort "This version of sls_recipes is not compatible with Capistrano 1.x." unless respond_to?(:namespace)
-  
   # Add sls_recipes to the load path  
   @load_paths << File.expand_path(File.dirname(__FILE__))
 
@@ -73,9 +71,44 @@ Capistrano::Configuration.instance(:must_exist).load do
     eval src
   end
 
-  # Now, let's actually include our common recipes!    
+  # Now, let's actually include our common recipes!
+  namespace :deploy do
+    desc <<-DESC
+      [capistrano-extensions] Creates shared filecolumn directories and symbolic links to them by 
+      reading the :content_directories property.  Note that this task is not invoked by default,
+      but rather is exposed to you as a helper.  To utilize, you'll want to override
+      deploy:default and invoke this yourself.
+    DESC
+    task :create_shared_file_column_dirs, :roles => :app, :except => { :no_release => true } do
+      content_directories.each do |fc|
+        run <<-CMD
+          mkdir -p #{content_path}/#{fc} && 
+          ln -sf #{content_path}/#{fc} #{public_path}/#{fc} &&
+          chmod 775 -R #{content_path}/#{fc}
+        CMD
+      end
+    end
+    
+    desc <<-DESC
+      [capistrano-extensions]: Invokes geminstaller to ensure that the proper gem set is installed on 
+      the target server.  Note that this task is not invoked by default, but rather is exposed to you
+      as a helper.
+    DESC
+    task :gem_update, :roles => :app do
+      run <<-CMD
+        gem sources -u &&
+        geminstaller -e -c #{rails_config_path}/geminstaller.yml
+      CMD
+    end
+
+  end
+  
   namespace :log do
-    desc "Tarballs production.log and copies it locally"
+    desc <<-DESC
+      [capistrano-extensions]: Tarballs deployable environment's rails logfile (identified by 
+      RAILS_ENV environment variable, which defaults to 'production') and copies it to the local
+      filesystem
+    DESC
     task :pull do
       tmp_location = "#{shared_path}/#{rails_env}.log.gz"
       run "cp #{log_path}/#{rails_env}.log #{shared_path}/ && gzip #{shared_path}/#{rails_env}.log"
@@ -86,7 +119,8 @@ Capistrano::Configuration.instance(:must_exist).load do
 
   namespace :local do
     desc <<-DESC
-      Backs up database and copies it to the local machine
+      [capistrano-extensions]: Backs up deployable environment's database (identified by the 
+      RAILS_ENV environment variable, which defaults to 'production') and copies it to the local machine
     DESC
     task :backup_db, :roles => :db do 
       run "mysqldump --user=#{db['username']} --password=#{db['password']} #{db['database']} > #{shared_path}/db_backup.sql"
@@ -96,7 +130,7 @@ Capistrano::Configuration.instance(:must_exist).load do
     end
     
     desc <<-DESC
-      Untars the backup file downloaded from local:backup_db, and imports (via mysql command line 
+      [capistrano-extensions] Untars the backup file downloaded from local:backup_db, and imports (via mysql command line 
       tool) it back into the local database defined in the RESTORE_ENV env variable
     DESC
     task :restore_db do
@@ -110,7 +144,9 @@ Capistrano::Configuration.instance(:must_exist).load do
     end
     
     desc <<-DESC
-      Downloads a tarball of uploaded content from the production site back to the local filesystem
+      [capistrano-extensions]: Downloads a tarball of uploaded content (that lives in public/ 
+      directory, as specified by the :content_directories property) from the production site 
+      back to the local filesystem
     DESC
     task :backup_content do
       run "cd #{content_path} && tar czf #{shared_path}/content_backup.tar.gz *"
@@ -119,7 +155,7 @@ Capistrano::Configuration.instance(:must_exist).load do
     end
     
     desc <<-DESC
-      Restores the backed up content to the local development environment app
+      [capistrano-extensions]: Restores the backed up content to the local development environment app
     DESC
     task :restore_content do
       system "tar xzf #{application}-#{rails_env}-content_backup.tar.gz -C public/"
@@ -127,8 +163,9 @@ Capistrano::Configuration.instance(:must_exist).load do
     end
     
     desc <<-DESC
-      Backs up target (production or staging) database and restores it to the local development
-      database
+      [capistrano-extensions]: Backs up target deployable environment's database (identified
+      by the RAILS_ENV environment variable, which defaults to 'production') and restores it to 
+      the local database identified by the RESTORE_ENV environment variable, which defaults to "development"
     DESC
     task :copy_production_db, :roles => :db do
       backup_db
@@ -136,7 +173,8 @@ Capistrano::Configuration.instance(:must_exist).load do
     end
     
     desc <<-DESC
-      Backs up the target (production or staging) content directories and restores them to the
+      [capistrano-extensions]: Backs up the target deployable environment's content directories (identified
+      by the RAILS_ENV environment variable, which defaults to 'production') and restores them to the
       local development filesystem
     DESC
     task :copy_production_content do
@@ -145,7 +183,8 @@ Capistrano::Configuration.instance(:must_exist).load do
     end
     
     desc <<-DESC
-      Copies all target (production or staging) data and content to the local development environment
+      [capistrano-extensions]: Copies all target (production or staging) data and content to a local environment
+      identified by the RESTORE_ENV environment variable, which defaults to "development"
     DESC
     task :copy_production do
       copy_production_db

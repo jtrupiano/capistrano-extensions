@@ -1,0 +1,134 @@
+= capistrano-extensions
+
+* FIX (url)
+
+== DESCRIPTION/FEATURES
+
+This gem provides a base set of Capistrano extensions including the following:
+  * helpers for handling public asset folders (e.g. created by the file_column plugin)
+  * auto-syncing server gems (via integration with Chad Wooley's GemInstaller gem)
+  * helpers for dealing with multiple deployable environments (e.g. staging, prodtest, production)
+  * logfile helpers (pulling logfiles, etc.)
+  * database/asset synchronization from production to local environment
+
+
+== GOTCHAS
+
+
+  
+  
+== FEATURES
+  
+* Enforces that Chad Wooley's GemInstaller gem is installed on the
+  server.  It *****
+
+== NEW PROPERTIES --> DEFAULTS
+  # Provides a way to specify which uploadable asset directories (that live in public/)
+  # should be retrievable via the local:copy_production_content and local:copy_production
+  # tasks described below.  Note that this parameter is also utilized by the
+  # passenger-recipes gem to keep these uploadable assets in the shared/ context.
+  :content_directories --> []
+
+  # Which environments are deployable-- for each environment specified in this array,
+  # a helper function by the same name is created that is executed only if RAILS_ENV
+  # is set to that value.  See examples/sample_deploy.rb for a code sample.
+  :deployable_environments --> [:production]
+
+  # We at SLS use a different config structure than rails does out of the box.
+  # Setting this value to :sls will alter some of the expected paths.  Normally,
+  # you will not have to set this variable.  To see a discussion of the SLS config
+  # file structure, see http://blog.smartlogicsolutions.com/2008/06/02/better-setup-for-environments-in-rails/
+  :config_structure --> :rails
+  
+  # Which directory does apache blindly load conf files from
+  :apache_conf_dir --> /etc/apache2/sites-enabled
+  
+  # Full path to the graceful restart command of apache
+  :apache_restart_cmd --> /usr/sbin/apache2ctl
+
+== NEW TASKS ==
+* deploy:create_shared_file_column_dirs
+  
+  Creates shared filecolumn directories and symbolic links to them by 
+  reading the :content_directories property.  Note that this task is not invoked by default,
+  but rather is exposed to you as a helper.  To utilize, you'll want to override
+  deploy:default and invoke this yourself.
+  
+* deploy:gem_update
+
+  Invokes geminstaller to ensure that the proper gem set is installed on the target server.  
+  Note that this task is not invoked by default, but rather is exposed to you as a helper.
+  
+* log:pull
+
+  Tarballs deployable environment's rails logfile (identified by 
+  RAILS_ENV environment variable, which defaults to 'production') and copies it to the local
+  filesystem
+  
+* local:backup_db
+
+  Backs up deployable environment's database (identified by the 
+  RAILS_ENV environment variable, which defaults to 'production') and copies it to the local machine
+
+* local:restore_db
+
+  Untars the backup file downloaded from local:backup_db, and imports (via mysql command line 
+  tool) it back into the local database defined in the RESTORE_ENV env variable
+
+* local:backup_content
+
+  Downloads a tarball of uploaded content (that lives in public/ directory, as specified by
+  the :content_directories property) from the production site back to the local filesystem
+  
+* local:restore_content
+
+  Restores the backed up content to the local development environment app
+  
+* local:copy_production_db
+
+  Wrapper for local:backup_db and local:restore_db
+  
+* local:copy_production_content
+
+  Wrapper for local:backup_content and local:restore_content
+  
+* local:copy_production
+
+  Wrapper for local:copy_production_db and local:copy_production_content
+
+== SYNOPSIS:
+
+  FIX (code sample of usage)
+
+== REQUIREMENTS:
+
+* FIX (list of requirements)
+
+== INSTALL:
+
+* FIX (sudo gem install, anything else)
+
+== LICENSE:
+
+(The MIT License)
+
+Copyright (c) 2008 FIX
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
