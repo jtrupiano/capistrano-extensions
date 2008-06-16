@@ -97,7 +97,7 @@ Capistrano::Configuration.instance(:must_exist).load do
     task :gem_update, :roles => :app do
       run <<-CMD
         gem sources -u &&
-        geminstaller -e -c #{rails_config_path}/geminstaller.yml
+        sudo geminstaller -e -c #{rails_config_path}/geminstaller.yml
       CMD
     end
 
