@@ -11,5 +11,6 @@ Gem::Specification.new do |s|
   
   s.files = Dir.glob("{lib}/**/*") + %w(README)
   
-  s.add_dependency(%q<capistrano>, [">= 2.3.0"]) # pessimistic?
+  s.add_dependency(%q<capistrano>, ["= 2.4.0"]) 
+  s.add_dependency(%q<geminstaller>, ['= 0.4.2'])
 end

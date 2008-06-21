@@ -8,13 +8,28 @@
 == DESCRIPTION/FEATURES
 
 This gem provides a base set of Capistrano extensions including the following:
+  * a new :gemfile RemoteDependency type
   * tasks/helpers for handling public asset folders (e.g. created by the file_column plugin)
   * tasks/helpers for auto-syncing server gems (via integration with Chad Wooley's GemInstaller gem)
   * helpers for dealing with multiple deployable environments (e.g. staging, prodtest, production)
   * tasks for working with remote logfiles
   * tasks for database/asset synchronization from production back to local environments
 
-== NEW PROPERTIES --> DEFAULTS
+== CAPISTRANO CODE EXTENSIONS ==
+* new RemoteDependency type :gemfile
+
+depend(:remote, :gemfile, "config/geminstaller.yml")
+
+Uses geminstaller code to parse gem file and then uses :gem RemoteDependency to ensure that each
+gem is installed on the remote server.
+
+This is still really only suitable for single-server deployments.  The idea would be to add new
+options to the geminstaller.yml config syntax that would allow us to reference specific
+capistrano roles for a given gem.  For instance, the database server won't need all of our rails
+gems.  A separate ferret server may require it's own set of gems, etc.
+
+
+== NEW RECIPE PROPERTIES --> DEFAULTS
   # Provides a way to specify which uploadable asset directories (that live in public/)
   # should be retrievable via the local:copy_production_content and local:copy_production
   # tasks described below.  Note that this parameter is also utilized by the
@@ -38,7 +53,8 @@ This gem provides a base set of Capistrano extensions including the following:
   # Full path to the graceful restart command of apache
   :apache_restart_cmd --> /usr/sbin/apache2ctl
 
-== NEW TASKS ==
+
+== NEW RECIPES ==
 * deploy:create_shared_file_column_dirs
   
   Creates shared filecolumn directories and symbolic links to them by 
