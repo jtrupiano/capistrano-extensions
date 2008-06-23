@@ -1,9 +1,9 @@
+require 'capistrano-extensions/geminstaller_dependency'
+
 # Overrides the majority of recipes from Capistrano's deploy recipe set.
 Capistrano::Configuration.instance(:must_exist).load do
   # Add sls_recipes to the load path  
   @load_paths << File.expand_path(File.dirname(__FILE__))
-
-  require 'capistrano-extensions/geminstaller_dependency'
 
   # ========================================================================
   # These variables MUST be set in the client capfiles. If they are not set,
