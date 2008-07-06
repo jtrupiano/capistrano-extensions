@@ -6,4 +6,4 @@ if ARGV.size < 2
 end
 
 system("cap local:backup_db RAILS_ENV=#{ARGV[0]}")
-system("cap local:restore_db RAILS_ENV=#{ARGV[1]} FROM=#{ARGV[0]}")
+system("cap remote:restore_db RAILS_ENV=#{ARGV[1]} FROM=#{ARGV[0]}")

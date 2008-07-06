@@ -10,8 +10,8 @@ Gem::Specification.new do |s|
   s.require_paths = ["lib"]
   
   s.files = Dir.glob("{lib}/**/*") + Dir['bin/*'] + %w(README)
-  s.executables = ['capistrano-extensions-copy-production-db']
+  s.executables = %w(capistrano-extensions-sync-db capistrano-extensions-sync-content)
   
   s.add_dependency(%q<capistrano>, ["= 2.4.3"])
-  s.add_dependency(%q<geminstaller>, ['= 0.4.2'])
+  s.add_dependency(%q<geminstaller>, ['= 0.4.3'])
 end

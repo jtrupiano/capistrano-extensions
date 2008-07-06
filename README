@@ -4,6 +4,9 @@
 
 == INCOMPLETE ==
 * Missing a detailed sample config file
+* Describe the shortcomings (or rather my dissatisfaction) with the remote syncing executables for
+  assets/db.  It works fine for now, but is a little wasteful.
+* Database synchronization _only_ works for MySQL.
 
 == DESCRIPTION/FEATURES
 
@@ -93,17 +96,57 @@ gems.  A separate ferret server may require it's own set of gems, etc.
 
   Restores the backed up content to the local development environment app
   
-* local:copy_production_db
+* local:sync_db
 
   Wrapper for local:backup_db and local:restore_db
   
-* local:copy_production_content
+* local:sync_content
 
   Wrapper for local:backup_content and local:restore_content
   
-* local:copy_production
+* local:sync
 
-  Wrapper for local:copy_production_db and local:copy_production_content
+  Wrapper for local:sync_db and local:sync_content
+
+* remote:restore_db
+
+  Uploads the backup file downloaded from local:backup_db (specified via the FROM env variable), 
+  copies it to the remove environment specified by RAILS_ENV, and imports (via mysql command line 
+  tool) it back into the remote database.
+
+* remote:sync_db
+
+  Backs up target deployable environment's database (identified by the FROM environment variable, 
+  which defaults to 'production') and restores it to the remote database identified by the TO 
+  environment variable, which defaults to "staging."  
+
+  Because multiple capistrano configurations must be loaded, an external executable
+  (capistrano-extensions-sync_db) is invoked, which independently calls capistrano.  See the 
+  executable at $GEM_HOME/capistrano-extensions-0.1.2/bin/capistrano-extensions-sync_db
+
+  $> cap remote:sync_db FROM=production TO=staging
+
+* remote:restore_content
+
+  Uploads the backup file downloaded from local:backup_content (specified via the FROM env variable), 
+  copies it to the remote environment specified by RAILS_ENV, and unpacks it into the shared/ 
+  directory.
+
+* remote:sync_content
+
+  Backs up target deployable environment's shared content (identified by the FROM environment 
+  variable, which defaults to 'production') and restores it to the remote environment identified 
+  by the TO envrionment variable, which defaults to "staging."  
+
+  Because multiple capistrano configurations must be loaded, an external executable
+  (capistrano-extensions-sync_content) is invoked, which independently calls capistrano.  See the 
+  executable at $GEM_HOME/capistrano-extensions-0.1.2/bin/capistrano-extensions-sync_content
+
+  $> cap remote:sync_content FROM=production TO=staging
+
+* remote:sync
+
+  Wrapper for remote:sync_db and remote:sync_content.
 
 == SYNOPSIS:
 
@@ -111,12 +154,13 @@ gems.  A separate ferret server may require it's own set of gems, etc.
 
 == REQUIREMENTS:
 
-* Capistrano >= 2.3.0
+* Capistrano = 2.4.3
+* GemInstaller = 0.4.3
 
 == INSTALL:
 
 * rake gem
-* sudo gem install pkg/capistrano-extensions-0.1.0.gem --local
+* sudo gem install pkg/capistrano-extensions-0.1.2.gem --local
 
 == LICENSE:
 

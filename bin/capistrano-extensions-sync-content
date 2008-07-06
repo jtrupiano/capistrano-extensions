@@ -1,0 +1,9 @@
+#!/usr/bin/env ruby
+
+if ARGV.size < 2
+  puts "Improper invocation: capistrano-extensions-copy-production-db backup_env restore_env"
+  exit 1
+end
+
+system("cap local:backup_content RAILS_ENV=#{ARGV[0]}")
+system("cap remote:restore_content RAILS_ENV=#{ARGV[1]} FROM=#{ARGV[0]}")
