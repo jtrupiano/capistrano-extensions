@@ -1,4 +1,5 @@
 require 'capistrano-extensions/geminstaller_dependency'
+require 'capistrano/server_definition'
 
 # Overrides the majority of recipes from Capistrano's deploy recipe set.
 Capistrano::Configuration.instance(:must_exist).load do
@@ -53,6 +54,9 @@ Capistrano::Configuration.instance(:must_exist).load do
 
   # Read from the local machine-- BE CAREFUL!!!
   set(:db) { YAML.load_file(local_db_conf)[rails_env] }
+
+  # HOLDS REFERENCES TO EACH OF THE DEPLOYABLE ENVIRONMENT BLOCKS
+  @env_procs = {}
       
   # Let's define helpers for our deployable environments
   # Can we possibly just infer this from the config directory structure?
@@ -66,11 +70,56 @@ Capistrano::Configuration.instance(:must_exist).load do
             deploy_to: \#{deploy_to}
             content_directories: \#{content_directories.join(', ')}
           DEBUG
-          yield
+          block.call if block_given?
+          @env_procs[:#{env}] = block
         end
       end
     CODE
     eval src
+  end
+
+
+  # all deployable environments get a pseudo-namespaced role
+  # as (e.g.) app_staging, app_production, web_staging, etc.
+  #temp = {}
+  #deployable_environments.each do |env|
+  #  find_and_execute_task(env)
+  #  roles.each { |name, role| temp[:"#{name}_#{env}"] = role }
+  #  roles.clear    
+  #end
+  #temp.each { |name, role| roles[name] = role }
+
+  # return the set of roles specific to an environment
+  #def roles_for(env)
+  #  roles.reject { |name, role| name =~ Regexp.new("/_#{env}$/") }
+  #end
+
+
+  # Helper function to allow you to temporarily change the deployment environment
+  # Useful for when you need to deal with several deployable environments
+  def change_deploy_env(new_env)
+      # convert the current deploy environment to new_env
+      old_rails_env = rails_env
+
+      set(rails_env, new_env)
+      roles.clear
+      @env_procs[rails_env.to_sym].call
+
+      server = Capistrano::ServerDefinition.new(ip, :user => user, :password => password) #@configuration.find_servers
+      establish_connections_to([server])
+
+      execute_on_servers do
+        yield
+      end      
+
+  ensure
+      # Set the environment back!
+      set(rails_env, old_rails_env)
+      roles.clear
+      @env_procs[rails_env.to_sym].call
+
+      server = Capistrano::ServerDefinition.new(ip) #@configuration.find_servers
+      establish_connections_to([server])
   end
 
   # Now, let's actually include our common recipes!
@@ -119,6 +168,37 @@ Capistrano::Configuration.instance(:must_exist).load do
     end
   end
 
+  namespace :remote do
+    desc <<-DESC
+      [capistrano-extensions] Uploads the backup file downloaded from local:backup_db (specified via the FROM env variable), 
+      copies it to the remove environment specified by RAILS_ENV, and imports (via mysql command line tool) it back into the 
+      remote database.
+    DESC
+    task :restore_db, :roles => :db do
+      env = ENV['FROM'] || 'production'
+      
+      puts "\033[1;41m Restoring database backup to #{rails_env} environment \033[0m"
+      if deployable_environments.include?(rails_env.to_sym)
+        # remote environment
+        local_backup_file = "#{application}-#{env}-db.sql.gz}"
+        upload(local_backup_file, "#{shared_path}/restore_db.sql.gz")
+        #run "gunzip #{shared_path}/restore_db.sql.gz"
+        #run "mysql -u #{user} --password=#{pass} #{db} < #{shared_path/restore_db.sql}"
+        #run "rm -f #{shared_path}/restore_db.sql #{shared_path}/restore_db.sql.gz"
+      end
+    end
+
+    desc <<-DESC
+      [capistrano-extensions]: Backs up target deployable environment's database (identified
+      by the FROM environment variable, which defaults to 'production') and restores it to 
+      the remote database identified by the TO environment variable, which defaults to "staging"
+    DESC
+    task :copy_production_db do
+      local::backup_db
+      system("capistrano-extensions-copy-production-db #{ENV['FROM'] || 'production'||} #{ENV['TO'] || 'staging'}")
+    end
+  end
+
   namespace :local do
     desc <<-DESC
       [capistrano-extensions]: Backs up deployable environment's database (identified by the 
@@ -132,14 +212,20 @@ Capistrano::Configuration.instance(:must_exist).load do
     end
     
     desc <<-DESC
-      [capistrano-extensions] Untars the backup file downloaded from local:backup_db, and imports (via mysql command line 
-      tool) it back into the local database defined in the RESTORE_ENV env variable
+      [capistrano-extensions] Untars the backup file downloaded from local:backup_db (specified via the FROM env variable), 
+      and imports (via mysql command line tool) it back into the database defined in the RAILS_ENV env variable.  
+      Support now exists for RAILS_ENV to be a remote server.  You must first ensure that :deployable_environments has this environment.
+      RAILS_ENV defaults to development.
     DESC
-    task :restore_db do
+    task :restore_db, :roles => :db do
+      env = ENV['FROM'] || 'production'
+      
       env = ENV['RESTORE_ENV'] || 'development'
       y = YAML.load_file(local_db_conf(env))[env]
       db, user, pass = y['database'], y['username'], y['password'] # update me!
-      
+
+      puts "\033[1;41m Restoring database backup to #{rails_env} environment \033[0m"
+      # local
       system "gunzip #{application}-#{rails_env}-db.sql.gz"
       system "mysql -u #{user} --password=#{pass} #{db} < #{application}-#{rails_env}-db.sql"
       system "rm -f #{application}-#{rails_env}-db.sql"
@@ -169,7 +255,7 @@ Capistrano::Configuration.instance(:must_exist).load do
       by the RAILS_ENV environment variable, which defaults to 'production') and restores it to 
       the local database identified by the RESTORE_ENV environment variable, which defaults to "development"
     DESC
-    task :copy_production_db, :roles => :db do
+    task :copy_production_db do
       backup_db
       restore_db
     end
