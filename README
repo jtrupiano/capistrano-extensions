@@ -6,7 +6,11 @@
 * Missing a detailed sample config file
 * Describe the shortcomings (or rather my dissatisfaction) with the remote syncing executables for
   assets/db.  It works fine for now, but is a little wasteful.
-* Database synchronization _only_ works for MySQL.
+* Database synchronization _only_ works for MySQL. (not sure if I intend to change this any time soon)
+* This has really only been tested on single-server deployments, so I'm not sure how well it will work
+  on more complex environments -- I'll personally be able to test that in the coming month or two, but
+  that will be dictated by necessity.
+* Still no support for user-uploaded assets stored outside of the public/ directory
 
 == DESCRIPTION/FEATURES
 
