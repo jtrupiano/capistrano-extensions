@@ -155,9 +155,9 @@ Capistrano::Configuration.instance(:must_exist).load do
     end
 
     desc <<-DESC
-      [capistrano-extensions]: Uploads the backup file downloaded from local:backup_content (specified via the 
-      FROM env variable), copies it to the remote environment specified by RAILS_ENV, and unpacks it into the 
-      shared/ directory.
+      [capistrano-extensions]: Uploads the backup file downloaded from local:backup_content (specified via the FROM env variable), 
+        copies it to the remote environment specified by RAILS_ENV, and unpacks it into the shared/ 
+        directory.
     DESC
     task :restore_content do
       from = ENV['FROM'] || 'production'
@@ -178,16 +178,23 @@ Capistrano::Configuration.instance(:must_exist).load do
     end
     
     desc <<-DESC
-      [capistrano-extensions]: Backs up target deployable environment's shared content (identified
-      by the FROM environment variable, which defaults to 'production') and restores it to the
-      remote environment identified by the TO envrionment variable, which defaults to "staging."
+      [capistrano-extensions]: Backs up target deployable environment's shared content (identified by the FROM environment 
+        variable, which defaults to 'production') and restores it to the remote environment identified 
+        by the TO envrionment variable, which defaults to "staging."  
+
+        Because multiple capistrano configurations must be loaded, an external executable
+        (capistrano-extensions-sync_content) is invoked, which independently calls capistrano.  See the 
+        executable at $GEM_HOME/capistrano-extensions-0.1.2/bin/capistrano-extensions-sync_content
+
+        $> cap remote:sync_content FROM=production TO=staging
     DESC
     task :sync_content do
       system("capistrano-extensions-sync-content #{ENV['FROM'] || 'production'} #{ENV['TO'] || 'staging'}")
     end
     
     desc <<-DESC
-      Wrapper fro remote:sync_db and remote:sync_content.
+      [capistrano-extensions]: Wrapper fro remote:sync_db and remote:sync_content.
+      $> cap remote:sync FROM=production TO=staging
     DESC
     task :sync do
       sync_db
@@ -208,13 +215,19 @@ Capistrano::Configuration.instance(:must_exist).load do
     end
     
     desc <<-DESC
-      [capistrano-extensions] Untars the backup file downloaded from local:backup_db (specified via the FROM env variable), 
-      and imports (via mysql command line tool) it back into the database defined in the RAILS_ENV env variable.  
-      Support now exists for RAILS_ENV to be a remote server.  You must first ensure that :deployable_environments has this environment.
-      RAILS_ENV defaults to development.
+      [capistrano-extensions] Untars the backup file downloaded from local:backup_db (specified via the FROM env 
+      variable, which defalts to RAILS_ENV), and imports (via mysql command line tool) it back into the database 
+      defined in the RAILS_ENV env variable.
+      
+      ToDo: implement proper rollback: currently, if the mysql import succeeds, but the rm fails,
+      the database won't be rolled back.  Not sure this is even all that important or necessary, since
+      it's a local database that doesn't demand integrity (in other words, you're still going to have to
+      fix it, but it's not mission critical).
     DESC
     task :restore_db, :roles => :db do
-      from = ENV['FROM'] || 'production'
+      on_rollback { "gzip #{application}-#{from}-db.sql"}
+      
+      from = ENV['FROM'] || rails_env
       
       env = ENV['RESTORE_ENV'] || 'development'
       y = YAML.load_file(local_db_conf(env))[env]
@@ -222,9 +235,10 @@ Capistrano::Configuration.instance(:must_exist).load do
 
       puts "\033[1;41m Restoring database backup to #{env} environment \033[0m"
       # local
-      system "gunzip #{application}-#{from}-db.sql.gz"
-      system "mysql -u #{user} -p#{pass} #{db} < #{application}-#{from}-db.sql"
-      system "rm -f #{application}-#{from}-db.sql"
+      system <<-CMD
+        gunzip #{application}-#{from}-db.sql.gz &&
+        mysql -u #{user} -p#{pass} #{db} < #{application}-#{from}-db.sql
+      CMD
     end
     
     desc <<-DESC
@@ -239,38 +253,42 @@ Capistrano::Configuration.instance(:must_exist).load do
     end
     
     desc <<-DESC
-      [capistrano-extensions]: Restores the backed up content to the local development environment app
+      [capistrano-extensions]: Restores the backed up content (evn var FROM specifies which environment
+      was backed up, defaults to RAILS_ENV) to the local development environment app
     DESC
     task :restore_content do
-      from = ENV['FROM'] || 'production'
+      from = ENV['FROM'] || rails_env
       
       system "tar xzf #{application}-#{from}-content_backup.tar.gz -C public/"
       system "rm -f #{application}-#{from}-content_backup.tar.gz"
     end
     
     desc <<-DESC
-      [capistrano-extensions]: Backs up target deployable environment's database (identified
-      by the RAILS_ENV environment variable, which defaults to 'production') and restores it to 
-      the local database identified by the RESTORE_ENV environment variable, which defaults to "development"
+      [capistrano-extensions]: Wrapper for local:backup_db and local:restore_db.      
+      $> cap local:sync_db RAILS_ENV=production RESTORE_ENV=development
     DESC
     task :sync_db do
-      backup_db
-      restore_db
+      transaction do
+        backup_db
+        ENV['FROM'] = rails_env
+        restore_db
+      end
     end
     
     desc <<-DESC
-      [capistrano-extensions]: Backs up the target deployable environment's content directories (identified
-      by the RAILS_ENV environment variable, which defaults to 'production') and restores them to the
-      local development filesystem
+      [capistrano-extensions]: Wrapper for local:backup_content and local:restore_content
+      $> cap local:sync_content RAILS_ENV=production RESTORE_ENV=development
     DESC
     task :sync_content do
-      backup_content
-      restore_content
+      transaction do
+        backup_content
+        restore_content
+      end
     end
     
     desc <<-DESC
-      [capistrano-extensions]: Copies all target (production or staging) data and content to a local environment
-      identified by the RESTORE_ENV environment variable, which defaults to "development"
+      [capistrano-extensions]: Wrapper for local:sync_db and local:sync_content
+      $> cap local:sync RAILS_ENV=production RESTORE_ENV=development
     DESC
     task :sync do
       copy_production_db

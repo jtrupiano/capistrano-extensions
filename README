@@ -1,8 +1,8 @@
-= capistrano-extensions
+== capistrano-extensions
 
 * http://github.com/jtrupiano/capistrano-extensions
 
-== INCOMPLETE ==
+== INCOMPLETE
 * Missing a detailed sample config file
 * Describe the shortcomings (or rather my dissatisfaction) with the remote syncing executables for
   assets/db.  It works fine for now, but is a little wasteful.
@@ -11,6 +11,9 @@
   on more complex environments -- I'll personally be able to test that in the coming month or two, but
   that will be dictated by necessity.
 * Still no support for user-uploaded assets stored outside of the public/ directory
+* Need to automate the generation of this document: the descriptions for each attribute/task
+  should mirror the description in the deploy script (in other words, I should only have to update the
+  the documentation in one place).
 
 == DESCRIPTION/FEATURES
 
@@ -22,20 +25,19 @@ This gem provides a base set of Capistrano extensions including the following:
   * tasks for working with remote logfiles
   * tasks for database/asset synchronization from production back to local environments
 
-== CAPISTRANO CODE EXTENSIONS ==
+== CAPISTRANO CODE EXTENSIONS
 * new RemoteDependency type :gemfile
 
-depend(:remote, :gemfile, "config/geminstaller.yml")
+  depend(:remote, :gemfile, "config/geminstaller.yml")
 
-Aliases the depend method (with depend_without_gemfile).  Proxies all calls with :type != :gemfile
-to the aliased method.  When :type == :gemfile, the gems file is parsed (using geminstaller 
-codebase) to iteratively call depend_without_gemfile with each gem found in the YAML file.
+  Aliases the depend method (with depend_without_gemfile).  Proxies all calls with :type != :gemfile
+  to the aliased method.  When :type == :gemfile, the gems file is parsed (using geminstaller 
+  codebase) to iteratively call depend_without_gemfile with each gem found in the YAML file.
 
-This is still really only suitable for single-server deployments.  The idea would be to add new
-options to the geminstaller.yml config syntax that would allow us to reference specific
-capistrano roles for a given gem.  For instance, the database server won't need all of our rails
-gems.  A separate ferret server may require it's own set of gems, etc.
-
+  This is still really only suitable for single-server deployments.  The idea would be to add new
+  options to the geminstaller.yml config syntax that would allow us to reference specific
+  capistrano roles for a given gem.  For instance, the database server won't need all of our rails
+  gems.  A separate ferret server may require it's own set of gems, etc.
 
 == NEW RECIPE PROPERTIES --> DEFAULTS
   # Provides a way to specify which uploadable asset directories (that live in public/)
@@ -54,15 +56,8 @@ gems.  A separate ferret server may require it's own set of gems, etc.
   # you will not have to set this variable.  To see a discussion of the SLS config
   # file structure, see http://blog.smartlogicsolutions.com/2008/06/02/better-setup-for-environments-in-rails/
   :config_structure --> :rails
-  
-  # Which directory does apache blindly load conf files from
-  :apache_conf_dir --> /etc/apache2/sites-enabled
-  
-  # Full path to the graceful restart command of apache
-  :apache_restart_cmd --> /usr/sbin/apache2ctl
 
-
-== NEW RECIPES ==
+== NEW RECIPES
 * deploy:create_shared_file_column_dirs
   
   Creates shared filecolumn directories and symbolic links to them by 
@@ -88,8 +83,14 @@ gems.  A separate ferret server may require it's own set of gems, etc.
 
 * local:restore_db
 
-  Untars the backup file downloaded from local:backup_db, and imports (via mysql command line 
-  tool) it back into the local database defined in the RESTORE_ENV env variable
+  Untars the backup file downloaded from local:backup_db (specified via the FROM env 
+  variable, which defalts to RAILS_ENV), and imports (via mysql command line tool) it back into the database 
+  defined in the RAILS_ENV env variable.
+
+  ToDo: implement proper rollback: currently, if the mysql import succeeds, but the rm fails,
+  the database won't be rolled back.  Not sure this is even all that important or necessary, since
+  it's a local database that doesn't demand integrity (in other words, you're still going to have to
+  fix it, but it's not mission critical).
 
 * local:backup_content
 
@@ -98,19 +99,26 @@ gems.  A separate ferret server may require it's own set of gems, etc.
   
 * local:restore_content
 
-  Restores the backed up content to the local development environment app
-  
+  Restores the backed up content (evn var FROM specifies which environment was backed up, 
+  defaults to RAILS_ENV) to the local development environment app
+
 * local:sync_db
 
   Wrapper for local:backup_db and local:restore_db
+
+  $> cap local:sync_db RAILS_ENV=production RESTORE_ENV=development
   
 * local:sync_content
 
   Wrapper for local:backup_content and local:restore_content
   
+  $> cap local:sync_content RAILS_ENV=production RESTORE_ENV=development
+  
 * local:sync
 
   Wrapper for local:sync_db and local:sync_content
+  
+  $> cap local:sync RAILS_ENV=production RESTORE_ENV=development
 
 * remote:restore_db
 
@@ -150,23 +158,25 @@ gems.  A separate ferret server may require it's own set of gems, etc.
 
 * remote:sync
 
-  Wrapper for remote:sync_db and remote:sync_content.
+  Wrapper fro remote:sync_db and remote:sync_content.
+  
+  $> cap remote:sync FROM=production TO=staging
 
 == SYNOPSIS:
 
   FIX (code sample of usage)
 
-== REQUIREMENTS:
+== REQUIREMENTS
 
 * Capistrano = 2.4.3
 * GemInstaller = 0.4.3
 
-== INSTALL:
+== INSTALL
 
 * rake gem
 * sudo gem install pkg/capistrano-extensions-0.1.2.gem --local
 
-== LICENSE:
+== LICENSE
 
 (The MIT License)
 
