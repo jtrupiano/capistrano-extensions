@@ -291,8 +291,8 @@ Capistrano::Configuration.instance(:must_exist).load do
       $> cap local:sync RAILS_ENV=production RESTORE_ENV=development
     DESC
     task :sync do
-      copy_production_db
-      copy_production_content
+      sync_db
+      sync_content
     end
   end
 end
