@@ -1,0 +1,9 @@
+# Created 2008-08-20
+
+v0.1.2
+2008-08-20
+	Fixed a mysql bug that was encountered in "sync" operations.  When passing a password on the command-line
+	(e.g. mysqldump -uuser -ppass), $'s in the password need to be escaped.  I also fixed the scenario where
+	there was no password (common for restoring to the development environment).  Previously you would be
+	prompted for a password only in the case where there was no password required.  This was a result of 
+	the way the mysql commands were being built: "mysql -u#{user} -p#{password}" where password was nil or ""

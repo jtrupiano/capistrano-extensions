@@ -139,8 +139,10 @@ Capistrano::Configuration.instance(:must_exist).load do
           exit 1
         end
         upload(local_backup_file, "#{remote_file}.gz")
+
+        pass_str = pluck_pass_str(db)
         run "gunzip -f #{remote_file}.gz"
-        run "mysql -u #{db['username']} --password=#{db['password']} #{db['database']} < #{remote_file}"
+        run "mysql -u#{db['username']} #{pass_str} #{db['database']} < #{remote_file}"
         run "rm -f #{remote_file}"
       end
     end
@@ -208,7 +210,9 @@ Capistrano::Configuration.instance(:must_exist).load do
       RAILS_ENV environment variable, which defaults to 'production') and copies it to the local machine
     DESC
     task :backup_db, :roles => :db do 
-      run "mysqldump --user=#{db['username']} --password=#{db['password']} #{db['database']} > #{shared_path}/db_backup.sql"
+      pass_str = pluck_pass_str(db)
+
+      run "mysqldump -u#{db['username']} #{pass_str} #{db['database']} > #{shared_path}/db_backup.sql"
       run "gzip #{shared_path}/db_backup.sql"
       get "#{shared_path}/db_backup.sql.gz", "#{application}-#{rails_env}-db.sql.gz"
       run "rm -f #{shared_path}/db_backup.sql.gz #{shared_path}/db_backup.sql"
@@ -231,13 +235,15 @@ Capistrano::Configuration.instance(:must_exist).load do
       
       env = ENV['RESTORE_ENV'] || 'development'
       y = YAML.load_file(local_db_conf(env))[env]
-      db, user, pass = y['database'], y['username'], y['password'] # update me!
+      db, user = y['database'], y['username'] # update me!
+
+      pass_str = pluck_pass_str(y)
 
       puts "\033[1;41m Restoring database backup to #{env} environment \033[0m"
       # local
       system <<-CMD
         gunzip #{application}-#{from}-db.sql.gz &&
-        mysql -u #{user} -p#{pass} #{db} < #{application}-#{from}-db.sql
+        mysql -u#{user} #{pass_str} #{db} < #{application}-#{from}-db.sql
       CMD
     end
     
@@ -295,4 +301,12 @@ Capistrano::Configuration.instance(:must_exist).load do
       sync_content
     end
   end
+end
+
+def pluck_pass_str(db_config)
+  pass_str = db_config['password']
+  if !pass_str.nil?
+    pass_str = "-p#{pass_str.gsub('$', '\$')}"
+  end
+  pass_str || ''
 end

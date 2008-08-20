@@ -9,7 +9,7 @@ Gem::Specification.new do |s|
   s.has_rdoc = false
   s.require_paths = ["lib"]
   
-  s.files = Dir.glob("{lib}/**/*") + Dir['bin/*'] + %w(README)
+  s.files = Dir.glob("{lib}/**/*") + Dir['bin/*'] + %w(README CHANGELOG)
   s.executables = %w(capistrano-extensions-sync-db capistrano-extensions-sync-content)
   
   s.add_dependency(%q<capistrano>, ["= 2.4.3"])
