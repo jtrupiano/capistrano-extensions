@@ -1,5 +1,18 @@
 # Created 2008-08-20
 
+v0.1.3
+2008-08-25 : VERSION BUMP
+  Introduced a new property :shared_content, which is intended to completely replace :content_directories
+  eventually.  All directories previously specified by :content_directories go through a simple transformation
+  to match the new hash construct that is :shared_content.  Now, we can specify non-public directories (though
+  they are still limited to within RAILS_ROOT), e.g.
+  
+  set(:shared_content) { "feeds" => "content" }
+  
+  This will create a symlink whose source is #{shared_path}/feeds and whose target is RAILS_ROOT/content.
+  Then, on successive deployments, this symlink is just recreated, and all of our feeds are still accessible
+  (because they were stored outside of RAILS_ROOT and then symlinked in).
+
 v0.1.2
 2008-08-20
 	Fixed a mysql bug that was encountered in "sync" operations.  When passing a password on the command-line

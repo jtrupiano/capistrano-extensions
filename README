@@ -45,6 +45,21 @@ This gem provides a base set of Capistrano extensions including the following:
   # tasks described below.  Note that this parameter is also utilized by the
   # passenger-recipes gem to keep these uploadable assets in the shared/ context.
   :content_directories --> []
+  
+  # This property is similar to :content_directories, except it doesn't assume that the symlinks
+  # exist in the public/ directory (the default location for FileColumn file storage).
+  #
+  # This property is a hash of remote => local mappings, e.g.
+  #
+  #   "feeds" => "content" (or "uploaded_assets/meal" => "public/meal")
+  #  
+  # These examples will effectively create the following symlinks in a deployable environment:
+  #   ln -sf \#{shared_path}/feeds RAILS_ROOT/content
+  #   ln -sf \#{shared_path}/uploaded_assets/meal RAILS_ROOT/public/meal
+  #  
+  # Each key (the "remote" directory) must be a directory found in \#{shared_path} (in a deployable environment)  
+  # Each value (the "local" directory) must be a directory found in RAILS_ROOT (in a local environment)
+  :shared_content --> {}
 
   # Which environments are deployable-- for each environment specified in this array,
   # a helper function by the same name is created that is executed only if RAILS_ENV

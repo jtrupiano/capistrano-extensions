@@ -17,7 +17,8 @@ Capistrano::Configuration.instance(:must_exist).load do
   # are not sufficient.
   # =========================================================================
 
-  _cset(:content_directories, [])
+  _cset(:content_directories, []) # I'd like to eventually remove this...
+  _cset(:shared_content, {})
   _cset(:rails_env) { ENV['RAILS_ENV'].nil? ? fetch(:deployable_environments).first : ENV['RAILS_ENV'] }  
 
   # =========================================================================
@@ -67,6 +68,7 @@ Capistrano::Configuration.instance(:must_exist).load do
             rails_env: \#{rails_env}
             deploy_to: \#{deploy_to}
             content_directories: \#{content_directories.join(', ')}
+            shared_content: \#{shared_content.keys.join(', ')}
           DEBUG
         end
       end
@@ -77,21 +79,21 @@ Capistrano::Configuration.instance(:must_exist).load do
   # Now, let's actually include our common recipes!
   namespace :deploy do
     desc <<-DESC
-      [capistrano-extensions] Creates shared filecolumn directories and symbolic links to them by 
-      reading the :content_directories property.  Note that this task is not invoked by default,
-      but rather is exposed to you as a helper.  To utilize, you'll want to override
-      deploy:default and invoke this yourself.
+      [capistrano-extensions] Creates shared directories and symbolic links to them by the 
+      :content_directories and :shared_content properties.  See the README for 
+      further explanation.
     DESC
     task :create_shared_file_column_dirs, :roles => :app, :except => { :no_release => true } do
-      content_directories.each do |fc|
+      mappings = content_directories.inject(shared_content) { |hsh, dir| hsh.merge({"content/#{dir}" => "public/#{dir}"}) }
+      mappings.each_pair do |remote, local|
         run <<-CMD
-          mkdir -p #{content_path}/#{fc} && 
-          ln -sf #{content_path}/#{fc} #{public_path}/#{fc} &&
-          chmod 775 -R #{content_path}/#{fc}
+          mkdir -p #{shared_path}/#{remote} &&
+          ln -sf #{shared_path}/#{remote} #{latest_release}/#{local} &&
+          chmod 755 -R #{shared_path}/#{remote}
         CMD
       end
     end
-    
+
     desc <<-DESC
       [capistrano-extensions]: Invokes geminstaller to ensure that the proper gem set is installed on 
       the target server.  Note that this task is not invoked by default, but rather is exposed to you
@@ -157,16 +159,16 @@ Capistrano::Configuration.instance(:must_exist).load do
     end
 
     desc <<-DESC
-      [capistrano-extensions]: Uploads the backup file downloaded from local:backup_content (specified via the FROM env variable), 
-        copies it to the remote environment specified by RAILS_ENV, and unpacks it into the shared/ 
-        directory.
+      [capistrano-extensions]: Uploads the backup file downloaded from local:backup_content (specified via the 
+      FROM env variable), copies it to the remote environment specified by RAILS_ENV, and unpacks it into the 
+      shared/ directory.
     DESC
     task :restore_content do
       from = ENV['FROM'] || 'production'
       
       if deployable_environments.include?(rails_env.to_sym)
         local_backup_file = "#{application}-#{from}-content_backup.tar.gz"
-        remote_file       = "#{content_path}/content_backup.tar.gz"
+        remote_file       = "#{shared_path}/content_backup.tar.gz"
         
         if !File.exists?(local_backup_file)
           puts "Could not find backup file: #{local_backup_file}"
@@ -174,21 +176,22 @@ Capistrano::Configuration.instance(:must_exist).load do
         end
         
         upload(local_backup_file, "#{remote_file}")
-        run("tar xzf #{remote_file} -C #{content_path}/")
-        run("rm -f #{remote_file}")
+        remote_dirs = ["content"] + shared_content.keys
+        
+        run("cd #{shared_path} && rm -rf #{remote_dirs.join(' ')} && tar xzf #{remote_file} -C #{shared_path}/")
       end
     end
     
     desc <<-DESC
       [capistrano-extensions]: Backs up target deployable environment's shared content (identified by the FROM environment 
-        variable, which defaults to 'production') and restores it to the remote environment identified 
-        by the TO envrionment variable, which defaults to "staging."  
+      variable, which defaults to 'production') and restores it to the remote environment identified 
+      by the TO envrionment variable, which defaults to "staging."  
 
-        Because multiple capistrano configurations must be loaded, an external executable
-        (capistrano-extensions-sync_content) is invoked, which independently calls capistrano.  See the 
-        executable at $GEM_HOME/capistrano-extensions-0.1.2/bin/capistrano-extensions-sync_content
+      Because multiple capistrano configurations must be loaded, an external executable
+      (capistrano-extensions-sync_content) is invoked, which independently calls capistrano.  See the 
+      executable at $GEM_HOME/capistrano-extensions-0.1.2/bin/capistrano-extensions-sync_content
 
-        $> cap remote:sync_content FROM=production TO=staging
+      $> cap remote:sync_content FROM=production TO=staging
     DESC
     task :sync_content do
       system("capistrano-extensions-sync-content #{ENV['FROM'] || 'production'} #{ENV['TO'] || 'staging'}")
@@ -253,7 +256,11 @@ Capistrano::Configuration.instance(:must_exist).load do
       back to the local filesystem
     DESC
     task :backup_content do
-      run "cd #{content_path} && tar czf #{shared_path}/content_backup.tar.gz *"
+      folders = ["content"] + shared_content.keys
+      
+      run "cd #{shared_path} && tar czf #{shared_path}/content_backup.tar.gz #{folders.join(' ')}"
+      
+      #run "cd #{content_path} && tar czf #{shared_path}/content_backup.tar.gz *"
       get "#{shared_path}/content_backup.tar.gz", "#{application}-#{rails_env}-content_backup.tar.gz"
       run "rm -f #{shared_path}/content_backup.tar.gz"
     end
@@ -267,6 +274,11 @@ Capistrano::Configuration.instance(:must_exist).load do
       
       system "tar xzf #{application}-#{from}-content_backup.tar.gz -C public/"
       system "rm -f #{application}-#{from}-content_backup.tar.gz"
+
+      shared_content.each_pair do |remote, local|
+        system "rm -rf #{local} && mv public/#{remote} #{local}"
+      end
+
     end
     
     desc <<-DESC
