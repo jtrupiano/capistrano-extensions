@@ -1,4 +1,3 @@
-(in /Users/john/projects/capistrano-extensions)
 Gem::Specification.new do |s|
   s.name = %q{capistrano-extensions}
   s.version = "0.1.3"
