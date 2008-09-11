@@ -238,7 +238,7 @@ Capistrano::Configuration.instance(:must_exist).load do
       
       env = ENV['RESTORE_ENV'] || 'development'
       y = YAML.load_file(local_db_conf(env))[env]
-      db, user = y['database'], y['username'] # update me!
+      db, user = y['database'], (y['username'] || 'root') # update me!
 
       pass_str = pluck_pass_str(y)
 

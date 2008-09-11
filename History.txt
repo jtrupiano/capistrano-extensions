@@ -1,5 +1,15 @@
 # Created 2008-08-20
 
+=== v0.1.3+ / not released yet -- available in the master branch on github
+2008-09-11
+* In local:restore_db, the db import would previously fail if the username was not specified in your database.yml
+  file.  I have corrected this and set it to default to 'root' now (as rails does).
+
+* Moved a lot of the information/instructions out of the README and onto the github wiki
+  (http://github.com/jtrupiano/capistrano-extensions/wikis/home).
+  
+* Started hosting the gem at rubyforge.  You can now install directly from gem without downloading the source!
+
 === v0.1.3 / 2008-08-25
 * 2008-08-25 : VERSION BUMP
   Introduced a new property :shared_content, which is intended to completely replace :content_directories

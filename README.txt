@@ -12,170 +12,7 @@ This gem provides a base set of Capistrano extensions including the following:
   * tasks for working with remote logfiles
   * tasks for database/asset synchronization from production back to local environments
 
-== INCOMPLETE:
-  * Missing a detailed sample config file
-  * Describe the shortcomings (or rather my dissatisfaction) with the remote syncing executables for
-    assets/db.  It works fine for now, but is a little wasteful.
-  * Database synchronization _only_ works for MySQL. (not sure if I intend to change this any time soon)
-  * This has really only been tested on single-server deployments, so I'm not sure how well it will work
-    on more complex environments -- I'll personally be able to test that in the coming month or two, but
-    that will be dictated by necessity.
-  * Still no support for user-uploaded assets stored outside of the public/ directory
-  * Need to automate the generation of this document: the descriptions for each attribute/task
-    should mirror the description in the deploy script (in other words, I should only have to update the
-    the documentation in one place).
-
-== CAPISTRANO CODE EXTENSIONS:
-* new RemoteDependency type :gemfile
-
-  depend(:remote, :gemfile, "config/geminstaller.yml")
-
-  Aliases the depend method (with depend_without_gemfile).  Proxies all calls with :type != :gemfile
-  to the aliased method.  When :type == :gemfile, the gems file is parsed (using geminstaller 
-  codebase) to iteratively call depend_without_gemfile with each gem found in the YAML file.
-
-  This is still really only suitable for single-server deployments.  The idea would be to add new
-  options to the geminstaller.yml config syntax that would allow us to reference specific
-  capistrano roles for a given gem.  For instance, the database server won't need all of our rails
-  gems.  A separate ferret server may require it's own set of gems, etc.
-
-== NEW RECIPE PROPERTIES --> DEFAULTS
-  # Provides a way to specify which uploadable asset directories (that live in public/)
-  # should be retrievable via the local:copy_production_content and local:copy_production
-  # tasks described below.  Note that this parameter is also utilized by the
-  # passenger-recipes gem to keep these uploadable assets in the shared/ context.
-  :content_directories --> []
-  
-  # This property is similar to :content_directories, except it doesn't assume that the symlinks
-  # exist in the public/ directory (the default location for FileColumn file storage).
-  #
-  # This property is a hash of remote => local mappings, e.g.
-  #
-  #   "feeds" => "content" (or "uploaded_assets/meal" => "public/meal")
-  #  
-  # These examples will effectively create the following symlinks in a deployable environment:
-  #   ln -sf \#{shared_path}/feeds RAILS_ROOT/content
-  #   ln -sf \#{shared_path}/uploaded_assets/meal RAILS_ROOT/public/meal
-  #  
-  # Each key (the "remote" directory) must be a directory found in \#{shared_path} (in a deployable environment)  
-  # Each value (the "local" directory) must be a directory found in RAILS_ROOT (in a local environment)
-  :shared_content --> {}
-
-  # Which environments are deployable-- for each environment specified in this array,
-  # a helper function by the same name is created that is executed only if RAILS_ENV
-  # is set to that value.  See examples/sample_deploy.rb for a code sample.
-  :deployable_environments --> [:production]
-
-  # We at SLS use a different config structure than rails does out of the box.
-  # Setting this value to :sls will alter some of the expected paths.  Normally,
-  # you will not have to set this variable.  To see a discussion of the SLS config
-  # file structure, see http://blog.smartlogicsolutions.com/2008/06/02/better-setup-for-environments-in-rails/
-  :config_structure --> :rails
-
-== NEW RECIPES:
-* deploy:create_shared_file_column_dirs
-  
-  Creates shared filecolumn directories and symbolic links to them by 
-  reading the :content_directories property.  Note that this task is not invoked by default,
-  but rather is exposed to you as a helper.  To utilize, you'll want to override
-  deploy:default and invoke this yourself.
-  
-* deploy:gem_update
-
-  Invokes geminstaller to ensure that the proper gem set is installed on the target server.  
-  Note that this task is not invoked by default, but rather is exposed to you as a helper.
-  
-* log:pull
-
-  Tarballs deployable environment's rails logfile (identified by 
-  RAILS_ENV environment variable, which defaults to 'production') and copies it to the local
-  filesystem
-  
-* local:backup_db
-
-  Backs up deployable environment's database (identified by the 
-  RAILS_ENV environment variable, which defaults to 'production') and copies it to the local machine
-
-* local:restore_db
-
-  Untars the backup file downloaded from local:backup_db (specified via the FROM env 
-  variable, which defalts to RAILS_ENV), and imports (via mysql command line tool) it back into the database 
-  defined in the RAILS_ENV env variable.
-
-  ToDo: implement proper rollback: currently, if the mysql import succeeds, but the rm fails,
-  the database won't be rolled back.  Not sure this is even all that important or necessary, since
-  it's a local database that doesn't demand integrity (in other words, you're still going to have to
-  fix it, but it's not mission critical).
-
-* local:backup_content
-
-  Downloads a tarball of uploaded content (that lives in public/ directory, as specified by
-  the :content_directories property) from the production site back to the local filesystem
-  
-* local:restore_content
-
-  Restores the backed up content (evn var FROM specifies which environment was backed up, 
-  defaults to RAILS_ENV) to the local development environment app
-
-* local:sync_db
-
-  Wrapper for local:backup_db and local:restore_db
-
-  $> cap local:sync_db RAILS_ENV=production RESTORE_ENV=development
-  
-* local:sync_content
-
-  Wrapper for local:backup_content and local:restore_content
-  
-  $> cap local:sync_content RAILS_ENV=production RESTORE_ENV=development
-  
-* local:sync
-
-  Wrapper for local:sync_db and local:sync_content
-  
-  $> cap local:sync RAILS_ENV=production RESTORE_ENV=development
-
-* remote:restore_db
-
-  Uploads the backup file downloaded from local:backup_db (specified via the FROM env variable), 
-  copies it to the remove environment specified by RAILS_ENV, and imports (via mysql command line 
-  tool) it back into the remote database.
-
-* remote:sync_db
-
-  Backs up target deployable environment's database (identified by the FROM environment variable, 
-  which defaults to 'production') and restores it to the remote database identified by the TO 
-  environment variable, which defaults to "staging."  
-
-  Because multiple capistrano configurations must be loaded, an external executable
-  (capistrano-extensions-sync_db) is invoked, which independently calls capistrano.  See the 
-  executable at $GEM_HOME/capistrano-extensions-0.1.3/bin/capistrano-extensions-sync_db
-
-  $> cap remote:sync_db FROM=production TO=staging
-
-* remote:restore_content
-
-  Uploads the backup file downloaded from local:backup_content (specified via the FROM env variable), 
-  copies it to the remote environment specified by RAILS_ENV, and unpacks it into the shared/ 
-  directory.
-
-* remote:sync_content
-
-  Backs up target deployable environment's shared content (identified by the FROM environment 
-  variable, which defaults to 'production') and restores it to the remote environment identified 
-  by the TO envrionment variable, which defaults to "staging."  
-
-  Because multiple capistrano configurations must be loaded, an external executable
-  (capistrano-extensions-sync_content) is invoked, which independently calls capistrano.  See the 
-  executable at $GEM_HOME/capistrano-extensions-0.1.2/bin/capistrano-extensions-sync_content
-
-  $> cap remote:sync_content FROM=production TO=staging
-
-* remote:sync
-
-  Wrapper fro remote:sync_db and remote:sync_content.
-  
-  $> cap remote:sync FROM=production TO=staging
+For a detailed exploration of these features, check out the wiki: http://github.com/jtrupiano/capistrano-extensions/wikis/home
 
 == SYNOPSIS:
 
@@ -183,13 +20,12 @@ This gem provides a base set of Capistrano extensions including the following:
 
 == REQUIREMENTS:
 
-* Capistrano = 2.4.3
+* Capistrano >= 2.4.3
 * GemInstaller = 0.4.3
 
 == INSTALL:
 
-* rake gem
-* sudo gem install pkg/capistrano-extensions-0.1.3.gem --local
+* sudo gem install capistrano-extensions
 
 == LICENSE:
 

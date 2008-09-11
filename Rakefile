@@ -22,13 +22,17 @@ require "./lib/capistrano-extensions/version"
 
 PKG_NAME      = "capistrano-extensions"
 PKG_BUILD     = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
-PKG_VERSION   = CapistranoExtensions::Version::STRING + PKG_BUILD
+version = CapistranoExtensions::Version::STRING.dup
+if ENV['SNAPSHOT'].to_i == 1
+  version << "." << Time.now.utc.strftime("%Y%m%d%H%M%S")
+end
+PKG_VERSION   = version
 PKG_FILE_NAME = "#{PKG_NAME}-#{PKG_VERSION}"
 
 
 Hoe.new('capistrano-extensions', PKG_VERSION) do |p|
-  # p.rubyforge_name = 'capistrano-extensionsx' # if different than lowercase project name
-  # p.developer('FIX', 'FIX@example.com')
+  p.rubyforge_name = 'environmentaliz' # if different than lowercase project name
+  p.developer('John Trupiano', 'jtrupiano@gmail.com')
   p.name = "capistrano-extensions"
   p.version = PKG_VERSION
   #p.platform = Gem::Platform::RUBY
