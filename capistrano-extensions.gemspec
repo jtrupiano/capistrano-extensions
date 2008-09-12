@@ -1,10 +1,10 @@
 Gem::Specification.new do |s|
   s.name = %q{capistrano-extensions}
-  s.version = "0.1.3"
+  s.version = "0.1.4"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["John Trupiano"]
-  s.date = %q{2008-08-26}
+  s.date = %q{2008-09-12}
   s.description = %q{A base set of Capistrano extensions-- aids with the file_column plugin, the GemInstaller gem, multiple deployable environments, logfile helpers, and database/asset synchronization from production to local environment}
   s.email = %q{jtrupiano@gmail.com}
   s.executables = ["capistrano-extensions-sync-content", "capistrano-extensions-sync-db"]
@@ -14,7 +14,7 @@ Gem::Specification.new do |s|
   s.homepage = %q{http://github.com/jtrupiano/capistrano-extensions}
   s.rdoc_options = ["--main", "README.txt"]
   s.require_paths = ["lib"]
-  s.rubyforge_project = %q{capistrano-extensions}
+  s.rubyforge_project = %q{johntrupiano}
   s.rubygems_version = %q{1.2.0}
   s.summary = %q{A base set of Capistrano extensions-- aids with the file_column plugin, the GemInstaller gem, multiple deployable environments, logfile helpers, and database/asset synchronization from production to local environment}
 

@@ -14,17 +14,17 @@ end
 PKG_VERSION   = version
 PKG_FILE_NAME = "#{PKG_NAME}-#{PKG_VERSION}"
 
-Hoe.new('capistrano-extensions', PKG_VERSION) do |p|
+Hoe.new(PKG_NAME, PKG_VERSION) do |p|
   p.rubyforge_name = 'johntrupiano' # if different than lowercase project name
   p.developer('John Trupiano', 'jtrupiano@gmail.com')
-  p.name = "capistrano-extensions"
+  p.name = PKG_NAME
   p.version = PKG_VERSION
   #p.platform = Gem::Platform::RUBY
   p.author = "John Trupiano"
   p.email = "jtrupiano@gmail.com"
   p.description = %q(A base set of Capistrano extensions-- aids with the file_column plugin, the GemInstaller gem, multiple deployable environments, logfile helpers, and database/asset synchronization from production to local environment)
   p.summary = p.description # More details later??
-  p.remote_rdoc_dir = 'capistrano-extensions' # Release to /capistrano-extensions
+  p.remote_rdoc_dir = PKG_NAME # Release to /PKG_NAME
   #  p.changes = p.paragraphs_of('CHANGELOG', 0..1).join("\n\n")
   p.extra_deps << ["capistrano", ">= 2.4.3"]
   p.extra_deps << ["geminstaller", ">= 0.4.3"]
