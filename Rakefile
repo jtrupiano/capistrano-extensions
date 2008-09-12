@@ -1,24 +1,9 @@
-# GEM_SPEC = eval(File.read("#{File.dirname(__FILE__)}/#{PKG_NAME}.gemspec"))
-# 
-# Rake::GemPackageTask.new(GEM_SPEC) do |p|
-#   p.gem_spec = GEM_SPEC
-#   p.need_tar = true
-#   p.need_zip = true
-# end
-# 
-# desc "Clean up generated directories and files"
-# task :clean do
-#   rm_rf "pkg"
-# end
-
-
 # -*- ruby -*-
 
 require 'rubygems'
 require 'hoe'
 require './lib/capistrano-extensions.rb'
 require "./lib/capistrano-extensions/version"
-
 
 PKG_NAME      = "capistrano-extensions"
 PKG_BUILD     = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
@@ -29,9 +14,8 @@ end
 PKG_VERSION   = version
 PKG_FILE_NAME = "#{PKG_NAME}-#{PKG_VERSION}"
 
-
 Hoe.new('capistrano-extensions', PKG_VERSION) do |p|
-  p.rubyforge_name = 'environmentaliz' # if different than lowercase project name
+  p.rubyforge_name = 'johntrupiano' # if different than lowercase project name
   p.developer('John Trupiano', 'jtrupiano@gmail.com')
   p.name = "capistrano-extensions"
   p.version = PKG_VERSION
