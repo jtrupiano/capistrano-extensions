@@ -220,6 +220,12 @@ Capistrano::Configuration.instance(:must_exist).load do
       run "rm -f #{shared_path}/db_backup.sql.gz #{shared_path}/db_backup.sql"
     end
     
+    task :wrap_restore_db do
+      transaction do
+        restore_db
+      end
+    end
+    
     desc <<-DESC
       [capistrano-extensions] Untars the backup file downloaded from local:backup_db (specified via the FROM env 
       variable, which defalts to RAILS_ENV), and imports (via mysql command line tool) it back into the database 
@@ -231,22 +237,51 @@ Capistrano::Configuration.instance(:must_exist).load do
       fix it, but it's not mission critical).
     DESC
     task :restore_db, :roles => :db do
-      on_rollback { "gzip #{application}-#{from}-db.sql"}
-      
       from = ENV['FROM'] || rails_env
+      env  = ENV['RESTORE_ENV'] || 'development'
       
-      env = ENV['RESTORE_ENV'] || 'development'
       y = YAML.load_file(local_db_conf(env))[env]
       db, user = y['database'], (y['username'] || 'root') # update me!
 
       pass_str = pluck_pass_str(y)
+      mysql_str  = "mysql -u#{user} #{pass_str} #{db}"
+      mysql_dump = "mysqldump -u#{user} #{pass_str} #{db}"
+      
+      timestamp = Time.now.to_i
+      local_backup_file  = "#{application}-#{env}-#{timestamp}-db.bak"
+      remote_backup_file = "#{application}-#{from}-db.sql"
 
+      # we're defining our own rollback here because we're only running local commands,
+      # and the on_rollback { } capistrano features are only intended for remote failures.
+      rollback = lambda { 
+        puts "rollback invoked!"
+        cmd = <<-CMD
+          rm -f #{remote_backup_file} &&
+          gunzip #{local_backup_file}.gz && 
+          rake RAILS_ENV=#{env} db:drop db:create &&
+          #{mysql_str} < #{local_backup_file} &&
+          rm -f #{local_backup_file}
+        CMD
+        #system("rm -f #{local_backup_file} && gzip #{application}-#{from}-db.sql")
+        #system(cmd.strip)
+        puts "trying to rollback with: #{cmd.strip}"
+      }
+      
       puts "\033[1;41m Restoring database backup to #{env} environment \033[0m"
+
       # local
-      system <<-CMD
-        gunzip #{application}-#{from}-db.sql.gz &&
-        mysql -u#{user} #{pass_str} #{db} < #{application}-#{from}-db.sql
+      cmd = <<-CMD
+        #{mysql_dump} | gzip > #{local_backup_file}.gz &&
+        rake RAILS_ENV=#{env} db:drop db:create &&
+        gunzip -c #{remote_backup_file}.gz > #{remote_backup_file} &&
+        #{mysql_str} < #{remote_backup_file} && 
+        rm -f #{remote_backup_file}
       CMD
+      #puts "running #{cmd.strip}"
+      ret = system(cmd.strip)
+      if $? != 0
+        rollback.call
+      end
     end
     
     desc <<-DESC
