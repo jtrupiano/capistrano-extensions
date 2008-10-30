@@ -49,7 +49,7 @@ Capistrano::Configuration.instance(:must_exist).load do
   def local_db_conf(env = nil)
     env ||= fetch(:rails_env)
     fetch(:config_structure, :rails).to_sym == :sls ?
-      File.join('config', env, 'database.yml') :
+      File.join('config', env.to_s, 'database.yml') :
       File.join('config', 'database.yml')
   end
 
@@ -79,17 +79,16 @@ Capistrano::Configuration.instance(:must_exist).load do
   # Now, let's actually include our common recipes!
   namespace :deploy do
     desc <<-DESC
-      [capistrano-extensions] Creates shared directories and symbolic links to them by the 
-      :content_directories and :shared_content properties.  See the README for 
-      further explanation.
+      [capistrano-extensions] Creates shared directories and symbolic links to them by reading the 
+      :content_directories and :shared_content properties.  See the README for further explanation.
     DESC
     task :create_shared_file_column_dirs, :roles => :app, :except => { :no_release => true } do
       mappings = content_directories.inject(shared_content) { |hsh, dir| hsh.merge({"content/#{dir}" => "public/#{dir}"}) }
       mappings.each_pair do |remote, local|
         run <<-CMD
           mkdir -p #{shared_path}/#{remote} &&
-          ln -sf #{shared_path}/#{remote} #{latest_release}/#{local} &&
-          chmod 755 -R #{shared_path}/#{remote}
+          chmod 755 #{shared_path}/#{remote} &&
+          ln -sf #{shared_path}/#{remote} #{latest_release}/#{local}
         CMD
       end
     end
@@ -224,7 +223,7 @@ Capistrano::Configuration.instance(:must_exist).load do
     desc <<-DESC
       [capistrano-extensions] Untars the backup file downloaded from local:backup_db (specified via the FROM env 
       variable, which defalts to RAILS_ENV), and imports (via mysql command line tool) it back into the database 
-      defined in the RAILS_ENV env variable.
+      defined in the RESTORE_ENV env variable (defaults to development).
       
       ToDo: implement proper rollback: currently, if the mysql import succeeds, but the rm fails,
       the database won't be rolled back.  Not sure this is even all that important or necessary, since
@@ -251,9 +250,8 @@ Capistrano::Configuration.instance(:must_exist).load do
     end
     
     desc <<-DESC
-      [capistrano-extensions]: Downloads a tarball of uploaded content (that lives in public/ 
-      directory, as specified by the :content_directories property) from the production site 
-      back to the local filesystem
+      [capistrano-extensions]: Downloads a tarball of shared content (identified by the :shared_content and 
+      :content_directories properties) from a deployable environment (RAILS_ENV) to the local filesystem.
     DESC
     task :backup_content do
       folders = ["content"] + shared_content.keys
