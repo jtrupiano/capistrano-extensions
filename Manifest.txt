@@ -2,10 +2,10 @@ History.txt
 Manifest.txt
 README.txt
 Rakefile
-bin/capistrano-extensions-sync-content
-bin/capistrano-extensions-sync-db
+bin/capsync
 capistrano-extensions.gemspec
 lib/capistrano-extensions.rb
+lib/capistrano-extensions/db_server.rb
 lib/capistrano-extensions/deploy.rb
 lib/capistrano-extensions/geminstaller_dependency.rb
 lib/capistrano-extensions/version.rb

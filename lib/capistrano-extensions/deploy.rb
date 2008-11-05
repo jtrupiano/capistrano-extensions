@@ -1,10 +1,10 @@
-require 'capistrano-extensions/geminstaller_dependency'
-require 'capistrano/server_definition'
-
 # Overrides the majority of recipes from Capistrano's deploy recipe set.
 Capistrano::Configuration.instance(:must_exist).load do
   # Add sls_recipes to the load path  
   @load_paths << File.expand_path(File.dirname(__FILE__))
+
+  require 'capistrano-extensions/geminstaller_dependency'
+  require 'capistrano-extensions/db_server'
 
   # ========================================================================
   # These variables MUST be set in the client capfiles. If they are not set,
@@ -141,13 +141,16 @@ Capistrano::Configuration.instance(:must_exist).load do
         end
         upload(local_backup_file, "#{remote_file}.gz")
 
-        pass_str = pluck_pass_str(db)
-        run "gunzip -f #{remote_file}.gz"
-        run "mysql -u#{db['username']} #{pass_str} #{db['database']} < #{remote_file}"
-        run "rm -f #{remote_file}"
+        db = DbServer.new(self, rails_env, false, db['database'], db['username'], db['password'])
+        db.sync!(remote_file)
+
+        # pass_str = pluck_pass_str(db)
+        # run "gunzip -f #{remote_file}.gz"
+        # run "mysql -u#{db['username']} #{pass_str} #{db['database']} < #{remote_file}"
+        # run "rm -f #{remote_file}"
       end
     end
-
+    
     desc <<-DESC
       [capistrano-extensions]: Backs up target deployable environment's database (identified
       by the FROM environment variable, which defaults to 'production') and restores it to 
@@ -212,76 +215,43 @@ Capistrano::Configuration.instance(:must_exist).load do
       RAILS_ENV environment variable, which defaults to 'production') and copies it to the local machine
     DESC
     task :backup_db, :roles => :db do 
-      pass_str = pluck_pass_str(db)
-
-      run "mysqldump -u#{db['username']} #{pass_str} #{db['database']} > #{shared_path}/db_backup.sql"
-      run "gzip #{shared_path}/db_backup.sql"
-      get "#{shared_path}/db_backup.sql.gz", "#{application}-#{rails_env}-db.sql.gz"
-      run "rm -f #{shared_path}/db_backup.sql.gz #{shared_path}/db_backup.sql"
-    end
-    
-    task :wrap_restore_db do
-      transaction do
-        restore_db
-      end
+      db_server   = DbServer.new(self, rails_env, false, db['database'], db['username'], db['password'])
+      
+      remote_file = "#{shared_path}/db_backup.sql.gz"
+      local_file  = "#{application}-#{rails_env}-db.sql.gz"
+      
+      db_server.dump!(remote_file)
+      get(remote_file, local_file)
+      run "rm -f #{remote_file}" # don't forget to clean up
+      
+      # pass_str = pluck_pass_str(db)
+      # 
+      # run "mysqldump -u#{db['username']} #{pass_str} #{db['database']} > #{shared_path}/db_backup.sql"
+      # run "gzip #{shared_path}/db_backup.sql"
+      # get "#{shared_path}/db_backup.sql.gz", "#{application}-#{rails_env}-db.sql.gz"
+      # run "rm -f #{shared_path}/db_backup.sql.gz #{shared_path}/db_backup.sql"
     end
     
     desc <<-DESC
       [capistrano-extensions] Untars the backup file downloaded from local:backup_db (specified via the FROM env 
       variable, which defalts to RAILS_ENV), and imports (via mysql command line tool) it back into the database 
-      defined in the RESTORE_ENV env variable (defaults to development).
-      
-      ToDo: implement proper rollback: currently, if the mysql import succeeds, but the rm fails,
-      the database won't be rolled back.  Not sure this is even all that important or necessary, since
-      it's a local database that doesn't demand integrity (in other words, you're still going to have to
-      fix it, but it's not mission critical).
+      defined in the RESTORE_ENV env variable (defaults to development).  Properly backs up the local environment's
+      database and restores it if failure is encountered.
     DESC
     task :restore_db, :roles => :db do
       from = ENV['FROM'] || rails_env
-      env  = ENV['RESTORE_ENV'] || 'development'
+      to   = ENV['RESTORE_ENV'] || 'development'
       
-      y = YAML.load_file(local_db_conf(env))[env]
-      db, user = y['database'], (y['username'] || 'root') # update me!
-
-      pass_str = pluck_pass_str(y)
-      mysql_str  = "mysql -u#{user} #{pass_str} #{db}"
-      mysql_dump = "mysqldump -u#{user} #{pass_str} #{db}"
+      y = YAML.load_file(local_db_conf(to))[to]
+      db, user, password = y['database'], (y['username'] || 'root'), y['password']
       
-      timestamp = Time.now.to_i
-      local_backup_file  = "#{application}-#{env}-#{timestamp}-db.bak"
       remote_backup_file = "#{application}-#{from}-db.sql"
-
-      # we're defining our own rollback here because we're only running local commands,
-      # and the on_rollback { } capistrano features are only intended for remote failures.
-      rollback = lambda { 
-        puts "rollback invoked!"
-        cmd = <<-CMD
-          rm -f #{remote_backup_file} &&
-          gunzip #{local_backup_file}.gz && 
-          rake RAILS_ENV=#{env} db:drop db:create &&
-          #{mysql_str} < #{local_backup_file} &&
-          rm -f #{local_backup_file}
-        CMD
-        #system("rm -f #{local_backup_file} && gzip #{application}-#{from}-db.sql")
-        #system(cmd.strip)
-        puts "trying to rollback with: #{cmd.strip}"
-      }
       
-      puts "\033[1;41m Restoring database backup to #{env} environment \033[0m"
+      puts "\033[1;41m Restoring #{from} database backup to #{to} environment \033[0m"
 
       # local
-      cmd = <<-CMD
-        #{mysql_dump} | gzip > #{local_backup_file}.gz &&
-        rake RAILS_ENV=#{env} db:drop db:create &&
-        gunzip -c #{remote_backup_file}.gz > #{remote_backup_file} &&
-        #{mysql_str} < #{remote_backup_file} && 
-        rm -f #{remote_backup_file}
-      CMD
-      #puts "running #{cmd.strip}"
-      ret = system(cmd.strip)
-      if $? != 0
-        rollback.call
-      end
+      db_server = DbServer.new(self, to, true, db, user, y['password'])
+      db_server.sync!(remote_backup_file)
     end
     
     desc <<-DESC
@@ -346,6 +316,46 @@ Capistrano::Configuration.instance(:must_exist).load do
       sync_content
     end
   end
+  
+  namespace :data do
+    desc <<-DESC
+      [capistrano-extensions]: Backs up deployable environment's database (identified by the 
+      RAILS_ENV environment variable, which defaults to 'production') and copies it to the local machine
+    DESC
+    task :backup, :roles => :db do 
+      db_server   = DbServer.new(self, rails_env, false, db['database'], db['username'], db['password'])
+      
+      remote_file = "#{shared_path}/db_backup.sql.gz"
+      local_file  = "#{application}-#{rails_env}-db.sql.gz"
+      
+      db_server.dump!(remote_file)
+      #get(remote_file, local_file)
+      #run "rm -f #{remote_file}" # don't forget to clean up
+    end
+    
+    desc <<-DESC
+      [capistrano-extensions] Untars the backup file downloaded from local:backup_db (specified via the FROM env 
+      variable, which defalts to RAILS_ENV), and imports (via mysql command line tool) it back into the database 
+      defined in the RESTORE_ENV env variable (defaults to development).  Properly backs up the local environment's
+      database and restores it if failure is encountered.
+    DESC
+    task :restore, :roles => :db do
+      from = ENV['FROM'] || rails_env
+      to   = ENV['RESTORE_ENV'] || 'development'
+      
+      y = YAML.load_file(local_db_conf(to))[to]
+      db, user, password = y['database'], (y['username'] || 'root'), y['password']
+      
+      remote_backup_file = "#{application}-#{from}-db.sql"
+      
+      puts "\033[1;41m Restoring #{from} database backup to #{to} environment \033[0m"
+
+      # local
+      db_server = DbServer.new(self, to, true, db, user, y['password'])
+      db_server.sync!(remote_backup_file)
+    end
+  end
+  
 end
 
 def pluck_pass_str(db_config)
