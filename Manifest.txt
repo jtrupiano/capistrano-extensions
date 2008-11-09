@@ -5,7 +5,9 @@ Rakefile
 bin/capsync
 capistrano-extensions.gemspec
 lib/capistrano-extensions.rb
+lib/capistrano-extensions/configuration.rb
 lib/capistrano-extensions/db_server.rb
+lib/capistrano-extensions/db_sync.rb
 lib/capistrano-extensions/deploy.rb
 lib/capistrano-extensions/geminstaller_dependency.rb
 lib/capistrano-extensions/version.rb

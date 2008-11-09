@@ -11,50 +11,11 @@ puts "\033[1;41m capsync invoked: Restoring #{from} database backup to #{to} env
 require 'rubygems'
 require 'capistrano'
 require 'capistrano/cli'
-require 'capistrano/recipes/deploy/script_helpers'
-require 'capistrano/configuration/variable_defaults'
-require 'capistrano-extensions/db_server'
+require 'capistrano-extensions/configuration'
+require 'capistrano-extensions/db_sync'
 
-module Capistrano
-  class Configuration
-    include Capistrano::Deploy::ScriptHelpers
-    include Capistrano::Configuration::VariableDefaults
-    
-    def to_db_server
-      cnf = local? ? self.local_db_conf : self.db
-      db, user, pass = cnf['database'], cnf['username'], cnf['password']
-      DbServer.new(self, self.fetch(:rails_env), local?, db, user, pass)
-    end
-    
-    private
-      def local?
-        @local ||= self.local_environments.map.include?(self.rails_env.to_sym)
-      end
-      
-  end
-end
+from_config = Capistrano::Configuration.new(from)
+to_config   = Capistrano::Configuration.new(to)
 
-def transfer(from, to)
-  f_db = from.to_db_server
-  t_db = to.to_db_server
-  
-  f_db.transfer_to!(t_db)
-end
-
-ENV['RAILS_ENV'] = from
-from_config = Capistrano::Configuration.new
-from_config.load(:file => "config/deploy.rb")
-
-ENV['RAILS_ENV'] = to
-to_config = Capistrano::Configuration.new
-to_config.load(:file => "config/deploy.rb")
-
-# Actually make remote calls
-#from_config.data.backup
-transfer(from_config, to_config)
-#to_config.data.restore
-
-#from_config.logger_level = Capistrano::Logger::TRACE
-#from_config.set(:password) { Capistrano::CLI.password_prompt }
-#ENV['RAILS_ENV'] = ARGV[0]
-#from_config.send(:load, "config/deploy")
+db_sync     = DbSync.new(from_config, to_config)
+db_sync.sync!
