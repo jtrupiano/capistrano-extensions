@@ -1,3 +1,4 @@
+# Encapsulates logic of executing shell commands on a remote or local server
 class DbServer
 
   attr_reader :config, :env, :local, :db, :username, :password, :timestamp
@@ -11,18 +12,6 @@ class DbServer
     @db, @username, @password   = cnf['database'], cnf['username'], cnf['password']
   end
     
-  # def transfer_to!(to)
-  #   from_file = "#{config.shared_path}/db_backup.sql.gz"
-  #   to_file   = "#{config.application}-#{config.rails_env}-db.sql.gz"
-  # 
-  #   dump!(from_file)
-  # 
-  #   to.send(:transfer!, self, from_file, to_file)
-  #   
-  #   puts "\033[1;41m Restoring #{config.rails_env} database backup to #{to.config.rails_env} database \033[0m"
-  #   to.send(:sync!, to_file)
-  # end
-
   def dump!(file)
     puts "\033[1;41m Dumping #{config.rails_env} database \033[0m"
     run_command("#{mysql_dump_str} | gzip > #{file}")
@@ -31,11 +20,11 @@ class DbServer
   def transfer!(from, from_file, to_file)
     puts "\033[1;41m Copying #{from.config.rails_env} database backup to #{config.rails_env} server \033[0m"
     cmd = "scp #{from.config.user}@#{from.config.ip}:#{from_file} #{to_file}"
-    run_command(cmd)  
+    run_command(cmd)
   end
 
   def sync!(remote_backup_file)
-    puts "\033[1;41m Restoring #{config.rails_env} database backup to #{to.config.rails_env} database \033[0m"
+    #puts "\033[1;41m Restoring #{config.rails_env} database backup to #{to.config.rails_env} database \033[0m"
     cmd = <<-CMD
       #{mysql_dump_str} | gzip > #{local_backup_file}.gz &&
       rake RAILS_ENV=#{@env} db:drop db:create &&

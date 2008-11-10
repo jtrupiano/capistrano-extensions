@@ -19,7 +19,7 @@ Capistrano::Configuration.instance(:must_exist).load do
 
   _cset(:content_directories, []) # I'd like to eventually remove this...
   _cset(:shared_content, {})
-  _cset(:rails_env) { ENV['RAILS_ENV'].nil? ? fetch(:deployable_environments).first : ENV['RAILS_ENV'] }  
+  _cset(:rails_env, ENV['RAILS_ENV'].nil? ? fetch(:deployable_environments).first : ENV['RAILS_ENV'])
 
   # =========================================================================
   # These variables should NOT be changed unless you are very confident in
@@ -31,6 +31,7 @@ Capistrano::Configuration.instance(:must_exist).load do
   set(:deploy_via, :export) # we don't want our .svn folders on the server!
   _cset(:deploy_to) { "/var/www/vhosts/#{application}" }
   _cset(:deployable_environments, [:production])
+  _cset(:local_environments, [:development])
 
   _cset(:rails_config_path) { File.join(latest_release, 'config') }
   _cset(:db_conf)           { 
