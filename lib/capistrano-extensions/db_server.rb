@@ -1,6 +1,9 @@
+require File.join(File.dirname(__FILE__), 'rollbackable')
+
 # Encapsulates logic of executing shell commands on a remote or local server
 class DbServer
-
+  include Rollbackable
+  
   attr_reader :config, :env, :local, :db, :username, :password, :timestamp
   alias local? local
   
@@ -32,7 +35,8 @@ class DbServer
       #{mysql_str} < #{remote_backup_file} && 
       rm -f #{remote_backup_file}
     CMD
-    run_command(cmd.strip, rollback_sync(remote_backup_file))
+    add_rollback rollback_sync(remote_backup_file)
+    run_command(cmd.strip)
   end
       
   private
@@ -80,15 +84,16 @@ class DbServer
       if local?
         ret = @config.send(:system, cmd)
         if !rollback_proc.nil? && ($? != 0)
-          put_error("Local error caught: #{ret}")
-          rollback_proc.call
+          msg = "Local error caught: #{ret}"
+          put_error(msg)
+          raise StandardError.new(msg)
         end
       else
         begin
           @config.run(cmd)
         rescue => ex
           put_error("Remote exception caught: #{ex.message}")
-          rollback_proc.call if !rollback_proc.nil?
+          raise ex
         end
       end
     end

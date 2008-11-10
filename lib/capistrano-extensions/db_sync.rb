@@ -11,15 +11,23 @@ class DbSync
     f_db = from_conf.to_db_server
     t_db = to_conf.to_db_server
 
-    # mysqldump >
-    f_db.dump!(from_file)
+    begin
+      # mysqldump >
+      f_db.dump!(from_file)
 
-    # scp
-    t_db.transfer!(f_db, from_file, to_file_gz)
-    
-    # mysql < 
-    puts "\033[1;41m Restoring #{from_conf.rails_env} database backup to #{to_conf.rails_env} database \033[0m"
-    t_db.sync!(to_file)
+      # scp
+      t_db.transfer!(f_db, from_file, to_file_gz)
+  
+      # mysql < 
+      puts "\033[1;41m Restoring #{from_conf.rails_env} database backup to #{to_conf.rails_env} database \033[0m"
+      t_db.sync!(to_file)
+    rescue
+      f_db.rollback!
+      t_db.rollback!
+    ensure
+      f_db.clear_rollbacks!
+      t_db.clear_rollbacks!
+    end
   end
   
   private
@@ -28,7 +36,7 @@ class DbSync
     end
     
     def to_file
-      "#{from_conf.application}-#{from_conf.rails_env}-db.sql"
+      "#{to_conf.current_path}/#{from_conf.application}-#{from_conf.rails_env}-db.sql"
     end
     
     def to_file_gz
