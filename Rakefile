@@ -26,8 +26,8 @@ Hoe.new(PKG_NAME, PKG_VERSION) do |p|
   p.summary = p.description # More details later??
   p.remote_rdoc_dir = PKG_NAME # Release to /PKG_NAME
   #  p.changes = p.paragraphs_of('CHANGELOG', 0..1).join("\n\n")
-  p.extra_deps << ["capistrano", ">= 2.4.3"]
-  p.extra_deps << ["geminstaller", ">= 0.4.3"]
+  p.extra_deps << ["capistrano", "~> 2.5.4"]
+  p.extra_deps << ["geminstaller", "~> 0.5.0"]
   p.need_zip = true
   p.need_tar = false
 end

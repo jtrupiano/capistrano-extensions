@@ -261,7 +261,7 @@ Capistrano::Configuration.instance(:must_exist).load do
       run "cd #{shared_path} && tar czf #{shared_path}/content_backup.tar.gz #{folders.join(' ')}"
       
       #run "cd #{content_path} && tar czf #{shared_path}/content_backup.tar.gz *"
-      get "#{shared_path}/content_backup.tar.gz", "#{application}-#{rails_env}-content_backup.tar.gz"
+      download("#{shared_path}/content_backup.tar.gz", "#{application}-#{rails_env}-content_backup.tar.gz")
       run "rm -f #{shared_path}/content_backup.tar.gz"
     end
     
@@ -272,11 +272,17 @@ Capistrano::Configuration.instance(:must_exist).load do
     task :restore_content do
       from = ENV['FROM'] || rails_env
       
-      system "tar xzf #{application}-#{from}-content_backup.tar.gz -C public/"
+      system "mkdir -p tmp/content-#{from}"
+      system "tar xzf #{application}-#{from}-content_backup.tar.gz -C tmp/content-#{from}"
       system "rm -f #{application}-#{from}-content_backup.tar.gz"
 
       shared_content.each_pair do |remote, local|
-        system "rm -rf #{local} && mv public/#{remote} #{local}"
+        system "rm -rf #{local} && mv tmp/content-#{from}/#{remote} #{local}"
+      end
+      
+      content_directories.each do |public_dir|
+        system "rm -rf public/#{public_dir}"
+        system "mv tmp/content-#{from}/content/#{public_dir} public/"
       end
 
     end

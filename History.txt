@@ -1,3 +1,6 @@
+=== v0.1.5 / 2009-02-22
+* Fixed local:restore_content to work better with :content_directories.
+
 === v0.1.4 / 2008-09-12
 * In local:restore_db, the db import would previously fail if the username was not specified in your database.yml
   file.  I have corrected this and set it to default to 'root' now (as rails does).

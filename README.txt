@@ -6,7 +6,7 @@
 
 This gem provides a base set of Capistrano extensions including the following:
   * a new :gemfile RemoteDependency type
-  * tasks/helpers for handling public asset folders (e.g. created by the file_column plugin)
+  * tasks/helpers for handling public and private asset folders (e.g. created by the file_column plugin)
   * tasks/helpers for auto-syncing server gems (via integration with Chad Wooley's GemInstaller gem)
   * helpers for dealing with multiple deployable environments (e.g. staging, prodtest, production)
   * tasks for working with remote logfiles
@@ -20,8 +20,8 @@ For a detailed exploration of these features, check out the wiki: http://github.
 
 == REQUIREMENTS:
 
-* Capistrano >= 2.4.3
-* GemInstaller = 0.4.3
+* Capistrano ~> 2.5.4
+* GemInstaller ~> 0.5.0
 
 == INSTALL:
 
