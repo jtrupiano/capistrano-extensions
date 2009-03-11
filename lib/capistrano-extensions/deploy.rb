@@ -87,9 +87,9 @@ Capistrano::Configuration.instance(:must_exist).load do
       mappings = content_directories.inject(shared_content) { |hsh, dir| hsh.merge({"content/#{dir}" => "public/#{dir}"}) }
       mappings.each_pair do |remote, local|
         run <<-CMD
+          umask 0022 && 
           mkdir -p #{shared_path}/#{remote} &&
-          ln -sf #{shared_path}/#{remote} #{latest_release}/#{local} &&
-          chmod 755 -R #{shared_path}/#{remote}
+          ln -sf #{shared_path}/#{remote} #{latest_release}/#{local}
         CMD
       end
     end
