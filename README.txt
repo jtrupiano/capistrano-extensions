@@ -1,6 +1,7 @@
 = capistrano-extensions
 
-* http://github.com/jtrupiano/capistrano-extensions
+* Stable API: http://johntrupiano.rubyforge.org/capistrano-extensions
+* Source: http://github.com/jtrupiano/capistrano-extensions
 
 == DESCRIPTION/FEATURES:
 
@@ -20,12 +21,13 @@ For a detailed exploration of these features, check out the wiki: http://github.
 
 == REQUIREMENTS:
 
-* Capistrano ~> 2.5.4
-* GemInstaller ~> 0.5.0
+* Capistrano ~> 2.5.5
+* GemInstaller ~> 0.5.1
 
 == INSTALL:
 
-* sudo gem install capistrano-extensions
+* sudo gem install capistrano-extensions (stable from rubyforge)
+* sudo gem install jtrupiano-capistrano-extensions (HEAD of repo from github)
 
 == LICENSE:
 

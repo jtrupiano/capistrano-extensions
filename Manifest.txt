@@ -1,4 +1,5 @@
 History.txt
+ISSUES.txt
 Manifest.txt
 README.txt
 Rakefile

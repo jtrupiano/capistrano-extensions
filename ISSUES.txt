@@ -1,0 +1,10 @@
+Known Bugs and Shortcomings
+
+(this one is specific to passenger-recipes, which really should be merged into capistrano-extensions...)
+* When introducing a new shared content directory, a bug can manifest itself when trying to sync production data back to your staging server.  Consider the following scenario:
+  1) Add a new upload field to your app (e.g. using file_column)
+  2) Update the deploy script to reference this new shared directory (via either :shared_content or :content_directories)
+  3) Try cap remote:sync FROM=production TO=staging --> It will fail when it tries to tarball up the shared content on production.
+  
+Currently, the best workaround is to log onto your production server and created the shared content directory, e.g. #{shared_path}/content/model_that_you_added_file_column_to
+
