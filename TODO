@@ -1,0 +1,2 @@
+* Write an all-encompassing "pull from production, migrate, test" recipe.
+* Fix nested geminstaller shortcoming...won't pick up on the nested file structure I recently devised.
