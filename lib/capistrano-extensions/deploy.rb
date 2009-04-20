@@ -1,9 +1,8 @@
 require 'capistrano-extensions/geminstaller_dependency'
-require 'capistrano/server_definition'
 
 # Overrides the majority of recipes from Capistrano's deploy recipe set.
 Capistrano::Configuration.instance(:must_exist).load do
-  # Add sls_recipes to the load path  
+  # Add us to the load path
   @load_paths << File.expand_path(File.dirname(__FILE__))
 
   # ========================================================================
@@ -44,6 +43,9 @@ Capistrano::Configuration.instance(:must_exist).load do
   _cset(:content_path)  { File.join(shared_path, content_dir) }
   _cset(:public_path)   { File.join(latest_release, 'public') }
   _cset(:log_path)      { "/var/log/#{application}" }
+  
+  # Local Paths
+  _cset(:tmp_dir) { "tmp/cap" }
   
   # Allow recipes to ask for a certain local environment
   def local_db_conf(env = nil)
@@ -214,9 +216,10 @@ Capistrano::Configuration.instance(:must_exist).load do
     task :backup_db, :roles => :db do 
       pass_str = pluck_pass_str(db)
 
-      run "mysqldump -u#{db['username']} #{pass_str} #{db['database']} > #{shared_path}/db_backup.sql"
-      run "gzip #{shared_path}/db_backup.sql"
-      get "#{shared_path}/db_backup.sql.gz", "#{application}-#{rails_env}-db.sql.gz"
+      run "mysqldump --add-drop-database -u#{db['username']} #{pass_str} #{db['database']} > #{shared_path}/db_backup.sql"
+      run "rm -f #{shared_path}/db_backup.sql.gz && gzip #{shared_path}/db_backup.sql"
+      system "mkdir -p #{tmp_dir}"
+      get "#{shared_path}/db_backup.sql.gz", "#{tmp_dir}/#{application}-#{rails_env}-db.sql.gz"
       run "rm -f #{shared_path}/db_backup.sql.gz #{shared_path}/db_backup.sql"
     end
     
@@ -245,11 +248,11 @@ Capistrano::Configuration.instance(:must_exist).load do
 
       pass_str = pluck_pass_str(y)
       mysql_str  = "mysql -u#{user} #{pass_str} #{db}"
-      mysql_dump = "mysqldump -u#{user} #{pass_str} #{db}"
+      mysql_dump = "mysqldump --add-drop-database -u#{user} #{pass_str} #{db}"
       
       timestamp = Time.now.to_i
-      local_backup_file  = "#{application}-#{env}-#{timestamp}-db.bak"
-      remote_backup_file = "#{application}-#{from}-db.sql"
+      local_backup_file  = "#{tmp_dir}/#{application}-#{env}-#{timestamp}-db.bak"
+      remote_backup_file = "#{tmp_dir}/#{application}-#{from}-db.sql"
 
       # we're defining our own rollback here because we're only running local commands,
       # and the on_rollback { } capistrano features are only intended for remote failures.
@@ -258,7 +261,6 @@ Capistrano::Configuration.instance(:must_exist).load do
         cmd = <<-CMD
           rm -f #{remote_backup_file} &&
           gunzip #{local_backup_file}.gz && 
-          rake RAILS_ENV=#{env} db:drop db:create &&
           #{mysql_str} < #{local_backup_file} &&
           rm -f #{local_backup_file}
         CMD
@@ -271,8 +273,8 @@ Capistrano::Configuration.instance(:must_exist).load do
 
       # local
       cmd = <<-CMD
+        mkdir -p #{tmp_dir} && 
         #{mysql_dump} | gzip > #{local_backup_file}.gz &&
-        rake RAILS_ENV=#{env} db:drop db:create &&
         gunzip -c #{remote_backup_file}.gz > #{remote_backup_file} &&
         #{mysql_str} < #{remote_backup_file} && 
         rm -f #{remote_backup_file}
@@ -294,7 +296,7 @@ Capistrano::Configuration.instance(:must_exist).load do
       run "cd #{shared_path} && tar czf #{shared_path}/content_backup.tar.gz #{folders.join(' ')}"
       
       #run "cd #{content_path} && tar czf #{shared_path}/content_backup.tar.gz *"
-      download("#{shared_path}/content_backup.tar.gz", "#{application}-#{rails_env}-content_backup.tar.gz")
+      download("#{shared_path}/content_backup.tar.gz", "#{tmp_dir}/#{application}-#{rails_env}-content_backup.tar.gz")
       run "rm -f #{shared_path}/content_backup.tar.gz"
     end
     
@@ -305,19 +307,19 @@ Capistrano::Configuration.instance(:must_exist).load do
     task :restore_content do
       from = ENV['FROM'] || rails_env
       
-      system "mkdir -p tmp/content-#{from}"
-      system "tar xzf #{application}-#{from}-content_backup.tar.gz -C tmp/content-#{from}"
-      system "rm -f #{application}-#{from}-content_backup.tar.gz"
+      system "mkdir -p #{tmp_dir}/content-#{from}"
+      system "tar xzf #{tmp_dir}/#{application}-#{from}-content_backup.tar.gz -C #{tmp_dir}/content-#{from}"
 
       shared_content.each_pair do |remote, local|
-        system "rm -rf #{local} && mv tmp/content-#{from}/#{remote} #{local}"
+        system "rm -rf #{local} && mv #{tmp_dir}/content-#{from}/#{remote} #{local}"
       end
       
       content_directories.each do |public_dir|
         system "rm -rf public/#{public_dir}"
-        system "mv tmp/content-#{from}/content/#{public_dir} public/"
+        system "mv #{tmp_dir}/content-#{from}/content/#{public_dir} public/"
       end
 
+      system "rm -rf #{tmp_dir}/content-#{from}"
     end
     
     desc <<-DESC
