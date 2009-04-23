@@ -219,7 +219,7 @@ Capistrano::Configuration.instance(:must_exist).load do
       run "mysqldump --add-drop-database -u#{db['username']} #{pass_str} #{db['database']} > #{shared_path}/db_backup.sql"
       run "rm -f #{shared_path}/db_backup.sql.gz && gzip #{shared_path}/db_backup.sql"
       system "mkdir -p #{tmp_dir}"
-      get "#{shared_path}/db_backup.sql.gz", "#{tmp_dir}/#{application}-#{rails_env}-db.sql.gz"
+      get "#{shared_path}/db_backup.sql.gz", "#{local_db_backup_file}.gz"
       run "rm -f #{shared_path}/db_backup.sql.gz #{shared_path}/db_backup.sql"
     end
     
@@ -250,9 +250,8 @@ Capistrano::Configuration.instance(:must_exist).load do
       mysql_str  = "mysql -u#{user} #{pass_str} #{db}"
       mysql_dump = "mysqldump --add-drop-database -u#{user} #{pass_str} #{db}"
       
-      timestamp = Time.now.to_i
-      local_backup_file  = "#{tmp_dir}/#{application}-#{env}-#{timestamp}-db.bak"
-      remote_backup_file = "#{tmp_dir}/#{application}-#{from}-db.sql"
+      local_backup_file  = local_db_backup_file(:env => env)
+      remote_backup_file = local_db_backup_file(:env => from)
 
       # we're defining our own rollback here because we're only running local commands,
       # and the on_rollback { } capistrano features are only intended for remote failures.
@@ -264,7 +263,7 @@ Capistrano::Configuration.instance(:must_exist).load do
           #{mysql_str} < #{local_backup_file} &&
           rm -f #{local_backup_file}
         CMD
-        #system("rm -f #{local_backup_file} && gzip #{application}-#{from}-db.sql")
+        #system("rm -f #{local_db_backup_file} && gzip #{application}-#{from}-db.sql")
         #system(cmd.strip)
         puts "trying to rollback with: #{cmd.strip}"
       }
@@ -299,7 +298,7 @@ Capistrano::Configuration.instance(:must_exist).load do
       run "cd #{shared_path} && tar czf #{shared_path}/content_backup.tar.gz #{folders.join(' ')}"
       
       #run "cd #{content_path} && tar czf #{shared_path}/content_backup.tar.gz *"
-      download("#{shared_path}/content_backup.tar.gz", "#{tmp_dir}/#{application}-#{rails_env}-content_backup.tar.gz")
+      download("#{shared_path}/content_backup.tar.gz", "#{local_content_backup_dir}.tar.gz")
       run "rm -f #{shared_path}/content_backup.tar.gz"
     end
     
@@ -310,19 +309,20 @@ Capistrano::Configuration.instance(:must_exist).load do
     task :restore_content do
       from = ENV['FROM'] || rails_env
       
-      system "mkdir -p #{tmp_dir}/content-#{from}"
-      system "tar xzf #{tmp_dir}/#{application}-#{from}-content_backup.tar.gz -C #{tmp_dir}/content-#{from}"
+      local_dir = local_content_backup_dir(:env => from)
+      system "mkdir -p #{local_dir}"
+      system "tar xzf #{local_dir}.tar.gz -C #{local_dir}"
 
       shared_content.each_pair do |remote, local|
-        system "rm -rf #{local} && mv #{tmp_dir}/content-#{from}/#{remote} #{local}"
+        system "rm -rf #{local} && mv #{local_dir}/#{remote} #{local}"
       end
       
       content_directories.each do |public_dir|
         system "rm -rf public/#{public_dir}"
-        system "mv #{tmp_dir}/content-#{from}/content/#{public_dir} public/"
+        system "mv #{local_dir}/content/#{public_dir} public/"
       end
 
-      system "rm -rf #{tmp_dir}/content-#{from}"
+      system "rm -rf #{local_dir}"
     end
     
     desc <<-DESC
@@ -335,6 +335,14 @@ Capistrano::Configuration.instance(:must_exist).load do
         ENV['FROM'] = rails_env
         restore_db
       end
+    end
+    
+    desc <<-DESC
+      [capistrano-extensions]: Ensure that a fresh remote data dump is retrieved before syncing to the local environment.
+    DESC
+    task :resync_db do
+      util::tmp::clean_remote
+      sync_db
     end
     
     desc <<-DESC
@@ -367,6 +375,11 @@ Capistrano::Configuration.instance(:must_exist).load do
         cmd = %Q{ [ 10 -le "`ls -1 #{tmp_dir} | wc -l`" ] || [ 50 -le "`du -sh #{tmp_dir} | awk '{print int($1)}'`" ] && printf "\033[1;41m Clean up #{tmp_dir} directory \033[0m\n" && du -sh #{tmp_dir}/*  }
         system(cmd)
       end
+      
+      desc "[capistrano-extensions]: Remove the current remote env's backups from :tmp_dir"
+      task :clean_remote do
+        system("rm -f #{tmp_dir}/#{application}-#{rails_env}*")
+      end
     
       # desc "Removes all but a single backup from :tmp_dir"
       # task :clean do
@@ -388,4 +401,23 @@ def pluck_pass_str(db_config)
     pass_str = "-p#{pass_str.gsub('$', '\$')}"
   end
   pass_str || ''
+end
+
+def current_timestamp
+  @current_timestamp ||= Time.now.to_i
+end
+
+def local_db_backup_file(args = {})
+  env = args[:env] || rails_env
+  "#{tmp_dir}/#{application}-#{env}-db-#{current_timestamp}.sql"
+end
+
+def local_db_backup_glob(args = {})
+  env = args[:env] || rails_env
+  "#{tmp_dir}/#{application}-#{env}-db-*.sql.gz"
+end
+
+def local_content_backup_dir(args={})
+  env = args[:env] || rails_env
+  "#{tmp_dir}/#{application}-#{env}-content-#{current_timestamp}"
 end

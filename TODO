@@ -1,2 +1,7 @@
 * Write an all-encompassing "pull from production, migrate, test" recipe.
 * Fix nested geminstaller shortcoming...won't pick up on the nested file structure I recently devised.
+
+
+* Better compression than gzip?
+** INCREMENTAL (DELTA) CONTENT DOWNLOADS, FTW!!! -- tar -N (to pass a timestamp to only pick up new files)...perhaps this can speed up the :copy_cache too??
+
