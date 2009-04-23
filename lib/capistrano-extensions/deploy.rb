@@ -45,10 +45,11 @@ Capistrano::Configuration.instance(:must_exist).load do
   _cset(:log_path)      { "/var/log/#{application}" }
   
   # Local Properties
-  _cset(:tmp_dir) { "tmp/cap" }
+  _cset(:tmp_dir, "tmp/cap")
   _cset(:zip, "gzip")
   _cset(:unzip, "gunzip")
   _cset(:zip_ext, "gz")
+  _cset(:store_dev_backups, false)
   
   # Allow recipes to ask for a certain local environment
   def local_db_conf(env = nil)
@@ -219,14 +220,19 @@ Capistrano::Configuration.instance(:must_exist).load do
     task :backup_db, :roles => :db do 
       pass_str = pluck_pass_str(db)
       
-      files = `ls #{tmp_dir} | awk -F"-" '{ if ($2 ~ /#{env}/ && $3 ~ /db/) { print; } }'`.split(' ')
-      return if !files.empty?
-      
+      # sort by last alphabetically (forcing the most recent timestamp to the top)
+      files = `ls -r #{tmp_dir} | awk -F"-" '{ if ($2 ~ /#{rails_env}/ && $3 ~ /db/) { print $4; } }'`.split(' ')
+
+      if files.empty?
+        # pull it from the server
         run "mysqldump --add-drop-database -u#{db['username']} #{pass_str} #{db['database']} > #{shared_path}/db_backup.sql"
         run "rm -f #{shared_path}/db_backup.sql.#{zip_ext} && #{zip} #{shared_path}/db_backup.sql"
         system "mkdir -p #{tmp_dir}"
         get "#{shared_path}/db_backup.sql.#{zip_ext}", "#{local_db_backup_file}.#{zip_ext}"
         run "rm -f #{shared_path}/db_backup.sql.#{zip_ext} #{shared_path}/db_backup.sql"
+      else
+        # set us up to use the cache
+        @current_timestamp = files.first.to_i # actually has the extension hanging off of it, but shouldn't be a problem
       end
     end
     
@@ -278,9 +284,14 @@ Capistrano::Configuration.instance(:must_exist).load do
       puts "\033[1;41m Restoring database backup to #{env} environment \033[0m"
 
       # local
-      cmd = <<-CMD
-        mkdir -p #{tmp_dir} && 
-        #{mysql_dump} | #{zip} > #{local_backup_file}.#{zip_ext} &&
+      cmd = ""
+      if store_dev_backups
+        cmd << <<-CMD
+          mkdir -p #{tmp_dir} && 
+          #{mysql_dump} | #{zip} > #{local_backup_file}.#{zip_ext} && 
+        CMD
+      end
+      cmd << <<-CMD
         #{unzip} -c #{remote_backup_file}.#{zip_ext} > #{remote_backup_file} &&
         #{mysql_str} < #{remote_backup_file} && 
         rm -f #{remote_backup_file}
