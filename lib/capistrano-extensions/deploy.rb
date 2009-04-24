@@ -225,13 +225,16 @@ Capistrano::Configuration.instance(:must_exist).load do
 
       if files.empty?
         # pull it from the server
-        run "mysqldump --add-drop-database -u#{db['username']} #{pass_str} #{db['database']} > #{shared_path}/db_backup.sql"
-        run "rm -f #{shared_path}/db_backup.sql.#{zip_ext} && #{zip} #{shared_path}/db_backup.sql"
+        server_file = "#{shared_path}/db_backup.sql.#{zip_ext}"
+        
+        if !server_cache_valid?(server_file)
+          run "mysqldump --add-drop-database -u#{db['username']} #{pass_str} #{db['database']} > #{shared_path}/db_backup.sql"
+          run "rm -f #{shared_path}/db_backup.sql.#{zip_ext} && #{zip} #{shared_path}/db_backup.sql && rm -f #{shared_path}/db_backup.sql"
+        end
         system "mkdir -p #{tmp_dir}"
-        get "#{shared_path}/db_backup.sql.#{zip_ext}", "#{local_db_backup_file}.#{zip_ext}"
-        run "rm -f #{shared_path}/db_backup.sql.#{zip_ext} #{shared_path}/db_backup.sql"
+        download("#{shared_path}/db_backup.sql.#{zip_ext}", "#{local_db_backup_file}.#{zip_ext}")
       else
-        # set us up to use the cache
+        # set us up to use our local cache
         @current_timestamp = files.first.to_i # actually has the extension hanging off of it, but shouldn't be a problem
       end
     end
@@ -424,12 +427,19 @@ def local_db_backup_file(args = {})
   "#{tmp_dir}/#{application}-#{env}-db-#{current_timestamp}.sql"
 end
 
-def local_db_backup_glob(args = {})
-  env = args[:env] || rails_env
-  "#{tmp_dir}/#{application}-#{env}-db-*.sql.#{zip_ext}"
-end
-
 def local_content_backup_dir(args={})
   env = args[:env] || rails_env
   "#{tmp_dir}/#{application}-#{env}-content-#{current_timestamp}"
 end
+
+module RemoteUtils
+  def last_mod_time(path)
+    capture("stat -c%Y #{path}").to_i
+  end
+  
+  def server_cache_valid?(path)
+    capture("[ -f #{path} ] || echo '1'").empty? && ((Time.now.to_i - last_mod_time(path)) <= 172800) # two days in seconds
+  end
+end
+
+include RemoteUtils
