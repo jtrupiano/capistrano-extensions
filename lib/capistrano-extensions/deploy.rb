@@ -140,7 +140,7 @@ Capistrano::Configuration.instance(:must_exist).load do
       puts "\033[1;41m Restoring database backup to #{rails_env} environment \033[0m"
       if deployable_environments.include?(rails_env.to_sym)
         # remote environment
-        local_backup_file = "#{application}-#{env}-db.sql.#{zip_ext}"
+        local_backup_file = "#{local_db_backup_file(:timestamp => retrieve_local_files(env, 'db').first.to_i, :env => env)}.#{zip_ext}" #"#{application}-#{env}-db.sql.#{zip_ext}"
         remote_file       = "#{shared_path}/restore_db.sql"
         if !File.exists?(local_backup_file)
           puts "Could not find backup file: #{local_backup_file}"
@@ -222,7 +222,7 @@ Capistrano::Configuration.instance(:must_exist).load do
       pass_str = pluck_pass_str(db)
       
       # sort by last alphabetically (forcing the most recent timestamp to the top)
-      files = `ls -r #{tmp_dir} | awk -F"-" '{ if ($2 ~ /#{rails_env}/ && $3 ~ /db/) { print $4; } }'`.split(' ')
+      files = retrieve_local_files(rails_env, 'db')
 
       if files.empty?
         # pull it from the server
@@ -419,18 +419,26 @@ def pluck_pass_str(db_config)
   pass_str || ''
 end
 
-def current_timestamp
-  @current_timestamp ||= Time.now.to_i
-end
+module LocalUtils
+  def current_timestamp
+    @current_timestamp ||= Time.now.to_i
+  end
 
-def local_db_backup_file(args = {})
-  env = args[:env] || rails_env
-  "#{tmp_dir}/#{application}-#{env}-db-#{current_timestamp}.sql"
-end
+  def local_db_backup_file(args = {})
+    env = args[:env] || rails_env
+    timestamp = args[:timestamp] || current_timestamp
+    "#{tmp_dir}/#{application}-#{env}-db-#{timestamp}.sql"
+  end
 
-def local_content_backup_dir(args={})
-  env = args[:env] || rails_env
-  "#{tmp_dir}/#{application}-#{env}-content-#{current_timestamp}"
+  def local_content_backup_dir(args={})
+    env = args[:env] || rails_env
+    timestamp = args[:timestamp] || current_timestamp
+    "#{tmp_dir}/#{application}-#{env}-content-#{timestamp}"
+  end
+
+  def retrieve_local_files(env, type)
+    `ls -r #{tmp_dir} | awk -F"-" '{ if ($2 ~ /#{env}/ && $3 ~ /#{type}/) { print $4; } }'`.split(' ')
+  end
 end
 
 module RemoteUtils
@@ -443,4 +451,4 @@ module RemoteUtils
   end
 end
 
-include RemoteUtils
+include LocalUtils, RemoteUtils
