@@ -235,13 +235,7 @@ Capistrano::Configuration.instance(:must_exist).load do
         @current_timestamp = files.first.to_i # actually has the extension hanging off of it, but shouldn't be a problem
       end
     end
-    
-    task :wrap_restore_db do
-      transaction do
-        restore_db
-      end
-    end
-    
+        
     desc <<-DESC
       [capistrano-extensions] Untars the backup file downloaded from local:backup_db (specified via the FROM env 
       variable, which defalts to RAILS_ENV), and imports (via mysql command line tool) it back into the database 
