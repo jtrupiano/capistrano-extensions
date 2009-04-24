@@ -46,10 +46,11 @@ Capistrano::Configuration.instance(:must_exist).load do
   
   # Local Properties
   _cset(:tmp_dir, "tmp/cap")
+  _cset(:store_dev_backups, false)
+  _cset(:remote_backup_expires, 172800) # 2 days in seconds.
   _cset(:zip, "gzip")
   _cset(:unzip, "gunzip")
   _cset(:zip_ext, "gz")
-  _cset(:store_dev_backups, false)
   
   # Allow recipes to ask for a certain local environment
   def local_db_conf(env = nil)
@@ -438,7 +439,7 @@ module RemoteUtils
   end
   
   def server_cache_valid?(path)
-    capture("[ -f #{path} ] || echo '1'").empty? && ((Time.now.to_i - last_mod_time(path)) <= 172800) # two days in seconds
+    capture("[ -f #{path} ] || echo '1'").empty? && ((Time.now.to_i - last_mod_time(path)) <= remote_backup_expires) # two days in seconds
   end
 end
 
