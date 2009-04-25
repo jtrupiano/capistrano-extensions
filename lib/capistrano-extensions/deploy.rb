@@ -309,13 +309,22 @@ Capistrano::Configuration.instance(:must_exist).load do
       :content_directories properties) from a deployable environment (RAILS_ENV) to the local filesystem.
     DESC
     task :backup_content do
-      folders = ["content"] + shared_content.keys
+      # sort by last alphabetically (forcing the most recent timestamp to the top)
+      files = retrieve_local_files(rails_env, 'content')
       
-      run "cd #{shared_path} && tar czf #{shared_path}/content_backup.tar.#{zip_ext} #{folders.join(' ')}"
-      
-      #run "cd #{content_path} && tar czf #{shared_path}/content_backup.tar.#{zip_ext} *"
-      download("#{shared_path}/content_backup.tar.#{zip_ext}", "#{local_content_backup_dir}.tar.#{zip_ext}")
-      run "rm -f #{shared_path}/content_backup.tar.#{zip_ext}"
+      if files.empty?
+        # pull it from the server
+        server_file = "#{shared_path}/content_backup.tar.#{zip_ext}"
+        if !server_cache_valid?(server_file)
+          folders = ["content"] + shared_content.keys
+          run "cd #{shared_path} && tar czf #{shared_path}/content_backup.tar.#{zip_ext} #{folders.join(' ')}"
+          #run "rm -f #{shared_path}/content_backup.tar.#{zip_ext}"
+        end
+        download("#{shared_path}/content_backup.tar.#{zip_ext}", "#{local_content_backup_dir}.tar.#{zip_ext}")
+      else
+        # set us up to use our local cache
+        @current_timestamp = files.first.to_i # actually has the extension hanging off of it, but shouldn't be a problem
+      end      
     end
     
     desc <<-DESC
