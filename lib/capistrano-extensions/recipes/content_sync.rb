@@ -17,7 +17,7 @@ namespace :remote do
       end
       
       upload(local_backup_file, "#{remote_file}")
-      remote_dirs = ["content"] + shared_content.keys
+      remote_dirs = [content_dir] + shared_content.keys
       
       run("cd #{shared_path} && rm -rf #{remote_dirs.join(' ')} && tar xzf #{remote_file} -C #{shared_path}/")
     end
