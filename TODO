@@ -1,14 +1,16 @@
+
+SHORT TERM
+* Allow individual files to be specified in :shared_content (e.g. ChaseCCTool.swf in Chase)
 * Write an all-encompassing "pull from production, migrate, test" recipe.
 * Fix nested geminstaller shortcoming...won't pick up on the nested file structure I recently devised.
-
-
-* Better compression than gzip?
+* Better compression than gzip?  Already abstracted this out to :zip, :unzip and :zip_ext, but may still want to do some more benchmarking.
 ** INCREMENTAL (DELTA) CONTENT DOWNLOADS, FTW!!! -- tar -N (to pass a timestamp to only pick up new files)...perhaps this can speed up the :copy_cache too??
 
+* Cache the SQL dump and content bundle at the server level.  Cap should check to see if the cached file is older than 2 days, and only then should it ask the database for a new one.  The same should be done locally.  If the local cached file is older than 2 days, only then request a new one from the server.  Do we need the timestamps anymore then?  Perhaps only locally....and even then, does it need to be in the name?
+  --> Already done for the DB dump...still need to implement for the content dump.
 
+LONG TERM
+* Extend Capistrano by creating a :property function to replace the set, _cset mess.  That way we can track the properties and create the documentation for the parameters that was always so elusive.
 
-Extend Capistrano by creating a :property function to replace the set, _cset mess.  That way we can track the properties and create the documentation for the parameters that was always so elusive.
+* We could also ensure that all executables invoked are recorded in a similar fashion, by using something other than :property to define it...perhaps :executable.  We could then always ensure that the program is invokable on the target system and abort the run before we even start it if something's missing.
 
-We could also ensure that all executables invoked are recorded in a similar fashion, by using something other than :property to define it...perhaps :executable.  We could then always ensure that the program is invokable on the target system and abort the run before we even start it if something's missing.
-
-Cache the SQL dump and content bundle at the server level.  Cap should check to see if the cached file is older than 2 days, and only then should it ask the database for a new one.  The same should be done locally.  If the local cached file is older than 2 days, only then request a new one from the server.  Do we need the timestamps anymore then?  Perhaps only locally....and even then, does it need to be in the name?
