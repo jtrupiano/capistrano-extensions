@@ -6,14 +6,14 @@ Gem::Specification.new do |s|
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["John Trupiano"]
-  s.date = %q{2009-03-11}
+  s.date = %q{2009-04-25}
   s.description = %q{A base set of Capistrano extensions-- aids with the file_column plugin, the GemInstaller gem, multiple deployable environments, logfile helpers, and database/asset synchronization from production to local environment}
   s.email = %q{jtrupiano@gmail.com}
   s.executables = ["capistrano-extensions-sync-content", "capistrano-extensions-sync-db"]
   s.extra_rdoc_files = ["History.txt", "ISSUES.txt", "Manifest.txt", "README.txt"]
-  s.files = ["History.txt", "ISSUES.txt", "Manifest.txt", "README.txt", "Rakefile", "bin/capistrano-extensions-sync-content", "bin/capistrano-extensions-sync-db", "capistrano-extensions.gemspec", "lib/capistrano-extensions.rb", "lib/capistrano-extensions/deploy.rb", "lib/capistrano-extensions/geminstaller_dependency.rb", "lib/capistrano-extensions/version.rb"]
+  s.files = ["History.txt", "ISSUES.txt", "Manifest.txt", "README.txt", "Rakefile", "TODO", "bin/capistrano-extensions-sync-content", "bin/capistrano-extensions-sync-db", "capistrano-extensions.gemspec", "lib/capistrano-extensions.rb", "lib/capistrano-extensions/deploy.rb", "lib/capistrano-extensions/geminstaller_dependency.rb", "lib/capistrano-extensions/recipes/content_sync.rb", "lib/capistrano-extensions/recipes/db_sync.rb", "lib/capistrano-extensions/version.rb"]
   s.has_rdoc = true
-  s.homepage = %q{http://github.com/jtrupiano/capistrano-extensions}
+  s.homepage = %q{Stable API: http://johntrupiano.rubyforge.org/capistrano-extensions}
   s.rdoc_options = ["--main", "README.txt"]
   s.require_paths = ["lib"]
   s.rubyforge_project = %q{johntrupiano}
@@ -27,15 +27,15 @@ Gem::Specification.new do |s|
     if Gem::Version.new(Gem::RubyGemsVersion) >= Gem::Version.new('1.2.0') then
       s.add_runtime_dependency(%q<capistrano>, ["~> 2.5.5"])
       s.add_runtime_dependency(%q<geminstaller>, ["~> 0.5.1"])
-      s.add_development_dependency(%q<hoe>, [">= 1.9.0"])
+      s.add_development_dependency(%q<hoe>, [">= 1.12.2"])
     else
       s.add_dependency(%q<capistrano>, ["~> 2.5.5"])
       s.add_dependency(%q<geminstaller>, ["~> 0.5.1"])
-      s.add_dependency(%q<hoe>, [">= 1.9.0"])
+      s.add_dependency(%q<hoe>, [">= 1.12.2"])
     end
   else
     s.add_dependency(%q<capistrano>, ["~> 2.5.5"])
     s.add_dependency(%q<geminstaller>, ["~> 0.5.1"])
-    s.add_dependency(%q<hoe>, [">= 1.9.0"])
+    s.add_dependency(%q<hoe>, [">= 1.12.2"])
   end
 end
