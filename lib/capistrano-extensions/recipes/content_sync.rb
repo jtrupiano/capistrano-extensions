@@ -8,8 +8,11 @@ namespace :remote do
     from = ENV['FROM'] || 'production'
     
     if deployable_environments.include?(rails_env.to_sym)
-      local_backup_file = "#{application}-#{from}-content_backup.tar.#{zip_ext}"
-      remote_file       = "#{shared_path}/content_backup.tar.#{zip_ext}"
+      generate_remote_content_backup if store_remote_backups
+      
+      local_backup_file = local_content_backup_dir(:timestamp => most_recent_local_backup(from, 'content'), :env => from) + ".tar.#{zip_ext}"
+      remote_dir        = "#{shared_path}/restore_#{from}_content"
+      remote_file       = "#{remote_dir}.tar.#{zip_ext}"
       
       if !File.exists?(local_backup_file)
         puts "Could not find backup file: #{local_backup_file}"
@@ -24,14 +27,7 @@ namespace :remote do
   end
   
   desc <<-DESC
-    [capistrano-extensions]: Backs up target deployable environment's shared content (identified by the FROM environment 
-    variable, which defaults to 'production') and restores it to the remote environment identified 
-    by the TO envrionment variable, which defaults to "staging."  
-
-    Because multiple capistrano configurations must be loaded, an external executable
-    (capistrano-extensions-sync_content) is invoked, which independently calls capistrano.  See the 
-    executable at $GEM_HOME/capistrano-extensions-0.1.2/bin/capistrano-extensions-sync_content
-
+    [capistrano-extensions]: Backs up remote server's shared content and restores it to a separate remote server.
     $> cap remote:sync_content FROM=production TO=staging
   DESC
   task :sync_content do
@@ -45,26 +41,24 @@ namespace :local do
     :content_directories properties) from a deployable environment (RAILS_ENV) to the local filesystem.
   DESC
   task :backup_content do
+    system("mkdir -p #{tmp_dir}")
     # sort by last alphabetically (forcing the most recent timestamp to the top)
     files = retrieve_local_files(rails_env, 'content')
     
     if files.empty?
       # pull it from the server
-      server_file = "#{shared_path}/content_backup.tar.#{zip_ext}"
-      if !server_cache_valid?(server_file)
-        folders = [content_dir] + shared_content.keys
-        run "cd #{shared_path} && tar czf #{shared_path}/content_backup.tar.#{zip_ext} #{folders.join(' ')}"
-        #run "rm -f #{shared_path}/content_backup.tar.#{zip_ext}"
-      end
-      download("#{shared_path}/content_backup.tar.#{zip_ext}", "#{local_content_backup_dir}.tar.#{zip_ext}")
+      generate_remote_content_backup unless server_cache_valid?(content_backup_file)
+      download(content_backup_file, "#{local_content_backup_dir}.tar.#{zip_ext}")
     else
       # set us up to use our local cache
       @current_timestamp = files.first.to_i # actually has the extension hanging off of it, but shouldn't be a problem
     end      
+    # Notify user if :tmp_dir is too large
+    util::tmp::check
   end
   
   desc <<-DESC
-    [capistrano-extensions]: Restores the backed up content (evn var FROM specifies which environment
+    [capistrano-extensions]: Restores the backed up content (env var FROM specifies which environment
     was backed up, defaults to RAILS_ENV) to the local development environment app
   DESC
   task :restore_content do
@@ -84,9 +78,6 @@ namespace :local do
     end
 
     system "rm -rf #{local_dir}"
-    
-    # Notify user if :tmp_dir is too large
-    util::tmp::check
   end
   
   
@@ -100,4 +91,13 @@ namespace :local do
       restore_content
     end
   end
+end
+
+def content_backup_file
+  "#{shared_path}/backup_#{rails_env}_content.tar.#{zip_ext}"
+end
+
+def generate_remote_content_backup
+  folders = [content_dir] + shared_content.keys
+  run "cd #{shared_path} && tar czf #{content_backup_file} #{folders.join(' ')}"
 end

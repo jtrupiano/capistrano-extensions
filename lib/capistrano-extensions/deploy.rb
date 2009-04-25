@@ -46,8 +46,12 @@ Capistrano::Configuration.instance(:must_exist).load do
   
   # Local Properties
   _cset(:tmp_dir, "tmp/cap")
+  # when local:syncing, should we keep backups just in case of failure?
   _cset(:store_dev_backups, false)
   _cset(:remote_backup_expires, 172800) # 2 days in seconds.
+  # when remote:syncing, should we keep backups just in case of failure?
+  _cset(:store_remote_backups, true)
+  
   _cset(:zip, "gzip")
   _cset(:unzip, "gunzip")
   _cset(:zip_ext, "gz")
@@ -209,6 +213,10 @@ module LocalUtils
 
   def retrieve_local_files(env, type)
     `ls -r #{tmp_dir} | awk -F"-" '{ if ($2 ~ /#{env}/ && $3 ~ /#{type}/) { print $4; } }'`.split(' ')
+  end
+  
+  def most_recent_local_backup(env, type)
+    retrieve_local_files(env, type).first.to_i
   end
 end
 
