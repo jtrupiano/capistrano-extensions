@@ -48,6 +48,7 @@ Capistrano::Configuration.instance(:must_exist).load do
   _cset(:tmp_dir, "tmp/cap")
   # when local:syncing, should we keep backups just in case of failure?
   _cset(:store_dev_backups, false)
+  # how long to allow remote backups to be valid (at both cache levels)
   _cset(:remote_backup_expires, 172800) # 2 days in seconds.
   # when remote:syncing, should we keep backups just in case of failure?
   _cset(:store_remote_backups, true)

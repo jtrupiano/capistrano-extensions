@@ -22,7 +22,7 @@ namespace :remote do
       upload(local_backup_file, "#{remote_file}.#{zip_ext}")
 
       pass_str = pluck_pass_str(db)
-      run "#{unzip} -f #{remote_file}.#{zip_ext}"
+      run "#{unzip} -c #{remote_file}.#{zip_ext} > #{remote_file}"
       run "mysql -u#{db['username']} #{pass_str} #{db['database']} < #{remote_file}"
       run "rm -f #{remote_file}"
     end
