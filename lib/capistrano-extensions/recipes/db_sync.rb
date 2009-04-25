@@ -9,9 +9,12 @@ namespace :remote do
     
     puts "\033[1;41m Restoring database backup to #{rails_env} environment \033[0m"
     if deployable_environments.include?(rails_env.to_sym)
+      generate_remote_db_backup if store_remote_backups
+      
       # remote environment
-      local_backup_file = "#{local_db_backup_file(:timestamp => retrieve_local_files(env, 'db').first.to_i, :env => env)}.#{zip_ext}" #"#{application}-#{env}-db.sql.#{zip_ext}"
-      remote_file       = "#{shared_path}/restore_db.sql"
+      local_backup_file = local_db_backup_file(:timestamp => most_recent_local_backup(env, 'db'), :env => env) + ".#{zip_ext}"
+      remote_file       = "#{shared_path}/restore_#{env}_db.sql"
+      
       if !File.exists?(local_backup_file)
         puts "Could not find backup file: #{local_backup_file}"
         exit 1
@@ -41,21 +44,15 @@ namespace :local do
     RAILS_ENV environment variable, which defaults to 'production') and copies it to the local machine
   DESC
   task :backup_db, :roles => :db do 
-    pass_str = pluck_pass_str(db)
     
     # sort by last alphabetically (forcing the most recent timestamp to the top)
     files = retrieve_local_files(rails_env, 'db')
 
     if files.empty?
       # pull it from the server
-      server_file = "#{shared_path}/db_backup.sql.#{zip_ext}"
-      
-      if !server_cache_valid?(server_file)
-        run "mysqldump --add-drop-database -u#{db['username']} #{pass_str} #{db['database']} > #{shared_path}/db_backup.sql"
-        run "rm -f #{shared_path}/db_backup.sql.#{zip_ext} && #{zip} #{shared_path}/db_backup.sql && rm -f #{shared_path}/db_backup.sql"
-      end
+      generate_remote_db_backup unless server_cache_valid?(db_backup_zip_file)
       system "mkdir -p #{tmp_dir}"
-      download("#{shared_path}/db_backup.sql.#{zip_ext}", "#{local_db_backup_file}.#{zip_ext}")
+      download(db_backup_zip_file, "#{local_db_backup_file}.#{zip_ext}")
     else
       # set us up to use our local cache
       @current_timestamp = files.first.to_i # actually has the extension hanging off of it, but shouldn't be a problem
@@ -122,4 +119,18 @@ namespace :local do
     sync_db
   end
   
+end
+
+def db_backup_file
+  "#{shared_path}/backup_#{rails_env}_db.sql"
+end
+
+def db_backup_zip_file
+  "#{db_backup_file}.#{zip_ext}"
+end
+
+def generate_remote_db_backup
+  pass_str = pluck_pass_str(db)
+  run "mysqldump --add-drop-database -u#{db['username']} #{pass_str} #{db['database']} > #{db_backup_file}"
+  run "rm -f #{db_backup_zip_file} && #{zip} #{db_backup_file} && rm -f #{db_backup_file}"
 end

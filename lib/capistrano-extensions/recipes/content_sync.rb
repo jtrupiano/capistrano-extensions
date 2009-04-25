@@ -41,13 +41,13 @@ namespace :local do
     :content_directories properties) from a deployable environment (RAILS_ENV) to the local filesystem.
   DESC
   task :backup_content do
-    system("mkdir -p #{tmp_dir}")
     # sort by last alphabetically (forcing the most recent timestamp to the top)
     files = retrieve_local_files(rails_env, 'content')
     
     if files.empty?
       # pull it from the server
       generate_remote_content_backup unless server_cache_valid?(content_backup_file)
+      system("mkdir -p #{tmp_dir}")
       download(content_backup_file, "#{local_content_backup_dir}.tar.#{zip_ext}")
     else
       # set us up to use our local cache
