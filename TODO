@@ -14,3 +14,4 @@ LONG TERM
 
 * We could also ensure that all executables invoked are recorded in a similar fashion, by using something other than :property to define it...perhaps :executable.  We could then always ensure that the program is invokable on the target system and abort the run before we even start it if something's missing.
 
+* Perhaps we should be using a set of rake tasks to manage a lot of this "shell scripting"...might clean up deploy.rb
