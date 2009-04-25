@@ -244,11 +244,6 @@ Capistrano::Configuration.instance(:must_exist).load do
       [capistrano-extensions] Untars the backup file downloaded from local:backup_db (specified via the FROM env 
       variable, which defalts to RAILS_ENV), and imports (via mysql command line tool) it back into the database 
       defined in the RESTORE_ENV env variable (defaults to development).
-      
-      ToDo: implement proper rollback: currently, if the mysql import succeeds, but the rm fails,
-      the database won't be rolled back.  Not sure this is even all that important or necessary, since
-      it's a local database that doesn't demand integrity (in other words, you're still going to have to
-      fix it, but it's not mission critical).
     DESC
     task :restore_db, :roles => :db do
       from = ENV['FROM'] || rails_env
@@ -264,21 +259,6 @@ Capistrano::Configuration.instance(:must_exist).load do
       local_backup_file  = local_db_backup_file(:env => env)
       remote_backup_file = local_db_backup_file(:env => from)
 
-      # we're defining our own rollback here because we're only running local commands,
-      # and the on_rollback { } capistrano features are only intended for remote failures.
-      rollback = lambda { 
-        puts "rollback invoked!"
-        cmd = <<-CMD
-          rm -f #{remote_backup_file} &&
-          #{unzip} #{local_backup_file}.#{zip_ext} && 
-          #{mysql_str} < #{local_backup_file} &&
-          rm -f #{local_backup_file}
-        CMD
-        #system("rm -f #{local_db_backup_file} && #{zip} #{application}-#{from}-db.sql")
-        #system(cmd.strip)
-        puts "trying to rollback with: #{cmd.strip}"
-      }
-      
       puts "\033[1;41m Restoring database backup to #{env} environment \033[0m"
 
       # local
@@ -294,11 +274,7 @@ Capistrano::Configuration.instance(:must_exist).load do
         #{mysql_str} < #{remote_backup_file} && 
         rm -f #{remote_backup_file}
       CMD
-      #puts "running #{cmd.strip}"
-      ret = system(cmd.strip)
-      if $? != 0
-        rollback.call
-      end
+      system(cmd.strip)
       
       # Notify user if :tmp_dir is too large
       util::tmp::check
