@@ -1,3 +1,17 @@
+=== v0.1.8 / 2009-04-27
+* Add two-level caching for syncing of content and database content.  First cache is locally in :tmp_dir (defaults to tmp/capistrano/), second is on the server in #{shared_path}
+* When syncing the database, automatically drop the target database (after backing it up) to eliminate the need to manually run rake db:drop db:create on the target server.
+* Add util::tmp::check, which will alert you with red messages when your local cache grows too big (> 50MB or > 10 files)
+* Expose :store_remote_backups and :store_dev_backups to turn on/off data/content backup when syncing.
+* Introduce :remote_backup_expires to set the expiry time in seconds for the remote cache (defaults to 2 days)
+* Via :zip, :unzip, and :zip_ext, allow user to choose their compression algorithm
+* Introduce :exclude_paths, which is basically a wrapper for :copy_exclude.  :copy_exclude is now preset to exclude all environment directories (particularly helpful for users of environmentalist) that are not being deployed to.
+* Change default :deploy_to to "/var/vhosts/#{application}"
+* Change default :deployable_environments to [:staging]
+* Change default :deploy_via to :copy
+* Change default :copy_cache to { File.expand_path("~/.capistrano/#{application}") }, which allows us to blindly use the user's home directory.
+* Move gem management to Jeweler
+
 === v0.1.5 / 2009-02-22
 * Fixed local:restore_content to work better with :content_directories.
 

@@ -6,13 +6,13 @@
 == DESCRIPTION/FEATURES:
 
 This gem provides a base set of {Capistrano}[http://www.capify.org/] extensions including the following:
-  * a new :gemfile RemoteDependency type
-  * tasks/helpers for handling public and private asset folders (e.g. created by the file_column plugin)
-  * tasks/helpers for auto-syncing server gems (via integration with the {GemInstaller}[http://geminstaller.rubyforge.org/] gem)
-  * helpers for dealing with multiple deployable environments (e.g. staging, prodtest, production)
-  * tasks for working with remote logfiles
-  * tasks for database/asset synchronization from production back to local environments
-  * integration with {environmentalist}[http://johntrupiano.rubyforge.org/environmentalist]
+* a new :gemfile RemoteDependency type
+* tasks/helpers for handling public and private asset folders (e.g. created by the file_column plugin)
+* tasks/helpers for auto-syncing server gems (via integration with the {GemInstaller}[http://geminstaller.rubyforge.org/] gem)
+* helpers for dealing with multiple deployable environments (e.g. staging, prodtest, production)
+* tasks for working with remote logfiles
+* tasks for database/asset synchronization from production back to local environments
+* integration with {environmentalist}[http://johntrupiano.rubyforge.org/environmentalist]
 
 For a detailed exploration of these features, check out the wiki: http://github.com/jtrupiano/capistrano-extensions/wikis/home
 
