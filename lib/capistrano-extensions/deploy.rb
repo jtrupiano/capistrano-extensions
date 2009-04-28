@@ -26,10 +26,10 @@ Capistrano::Configuration.instance(:must_exist).load do
   # changes if you do decide to muck with these!
   # =========================================================================
 
-  set(:use_sudo, false)     # we don't want to use sudo-- we don't have to!
-  set(:deploy_via, :export) # we don't want our .svn folders on the server!
-  _cset(:deploy_to) { "/var/www/vhosts/#{application}" }
-  _cset(:deployable_environments, [:production])
+  set(:use_sudo, false)   # we don't want to use sudo-- we don't have to!
+  set(:deploy_via, :copy) # no need to have subversion on the production server
+  _cset(:deploy_to) { "/var/vhosts/#{application}" }
+  _cset(:deployable_environments, [:staging])
 
   _cset(:rails_config_path) { File.join(latest_release, 'config') }
   _cset(:db_conf)           { 
@@ -52,6 +52,18 @@ Capistrano::Configuration.instance(:must_exist).load do
   _cset(:remote_backup_expires, 172800) # 2 days in seconds.
   # when remote:syncing, should we keep backups just in case of failure?
   _cset(:store_remote_backups, true)
+  # paths to exclude during deployment
+  _cset(:exclude_paths, [])
+  
+  _cset(:copy_cache) { File.expand_path("~/.capistrano/#{application}") }
+  set(:copy_exclude) {
+    # don't deploy the other environment directories
+    envs = fetch(:deployable_environments).dup
+    envs.delete_if { |env| rails_env.to_sym == env.to_sym }
+    envs.map! { |env| File.join("config", "#{env}") }
+    
+    envs + fetch(:exclude_paths)
+  }
   
   _cset(:zip, "gzip")
   _cset(:unzip, "gunzip")

@@ -1,6 +1,5 @@
 
 SHORT TERM
-* Move compute_unused_env_paths + :exclude_dirs into cap-extensions (from all of my cap files)
 * Allow individual files to be specified in :shared_content (e.g. ChaseCCTool.swf in Chase)
 * Write an all-encompassing "pull from production, migrate, test" recipe.
 * Fix nested geminstaller shortcoming...won't pick up on the nested file structure I recently devised.
