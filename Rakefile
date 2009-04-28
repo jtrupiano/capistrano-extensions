@@ -1,35 +1,67 @@
-# -*- ruby -*-
+require 'rake'
+require 'rake/testtask'
+require 'rake/rdoctask'
 
-require 'rubygems'
-require 'hoe'
-require './lib/capistrano-extensions.rb'
-require "./lib/capistrano-extensions/version"
-
-PKG_NAME      = "capistrano-extensions"
-PKG_BUILD     = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
-version = CapistranoExtensions::Version::STRING.dup
-if ENV['SNAPSHOT'].to_i == 1
-  version << "." << Time.now.utc.strftime("%Y%m%d%H%M%S")
-end
-PKG_VERSION   = version
-PKG_FILE_NAME = "#{PKG_NAME}-#{PKG_VERSION}"
-
-Hoe.new(PKG_NAME, PKG_VERSION) do |p|
-  p.rubyforge_name = 'johntrupiano' # if different than lowercase project name
-  p.developer('John Trupiano', 'jtrupiano@gmail.com')
-  p.name = PKG_NAME
-  p.version = PKG_VERSION
-  #p.platform = Gem::Platform::RUBY
-  p.author = "John Trupiano"
-  p.email = "jtrupiano@gmail.com"
-  p.description = %q(A base set of Capistrano extensions-- aids with the file_column plugin, the GemInstaller gem, multiple deployable environments, logfile helpers, and database/asset synchronization from production to local environment)
-  p.summary = p.description # More details later??
-  p.remote_rdoc_dir = PKG_NAME # Release to /PKG_NAME
-  #  p.changes = p.paragraphs_of('CHANGELOG', 0..1).join("\n\n")
-  p.extra_deps << ["capistrano", "~> 2.5.5"]
-  p.extra_deps << ["geminstaller", "~> 0.5.1"]
-  p.need_zip = true
-  p.need_tar = false
+begin
+  require 'jeweler'
+  Jeweler::Tasks.new do |gem|
+    gem.name = "capistrano-extensions"
+    gem.rubyforge_project = "johntrupiano"
+    gem.summary = %q(A base set of Capistrano extensions-- aids with the file_column plugin, the GemInstaller gem, multiple deployable environments, logfile helpers, and database/asset synchronization from production to local environment)
+    gem.email = "jtrupiano@gmail.com"
+    gem.homepage = "http://github.com/jtrupiano/capistrano-extensions"
+    gem.description = %q(A base set of Capistrano extensions-- aids with the file_column plugin, the GemInstaller gem, multiple deployable environments, logfile helpers, and database/asset synchronization from production to local environment)
+    gem.authors = ["John Trupiano"]
+    gem.add_dependency "capistrano", "~> 2.5.5"
+    gem.add_dependency "geminstaller", "~> 0.5.1"
+  end
+rescue LoadError
+  puts "Jeweler, or one of its dependencies, is not available. Install it with: sudo gem install jeweler"
 end
 
-# vim: syntax=Ruby
+desc 'Default: run unit tests.'
+task :default => :test
+
+desc 'Test the capistrano-extensions plugin.'
+Rake::TestTask.new(:test) do |t|
+  t.libs << 'lib'
+  t.pattern = 'test/**/*_test.rb'
+  t.verbose = true
+end
+
+desc 'Generate documentation for the sanitize_email plugin.'
+Rake::RDocTask.new do |rdoc|
+  config = YAML.load(File.read('VERSION.yml'))
+  rdoc.rdoc_dir = 'rdoc'
+  rdoc.title = "sanitize_email #{config[:major]}.#{config[:minor]}.#{config[:patch]}"
+  rdoc.options << '--line-numbers' << '--inline-source'
+  rdoc.rdoc_files.include('README*')
+  rdoc.rdoc_files.include('lib/**/*.rb')
+end
+
+# Rubyforge documentation task
+begin
+  require 'rake/contrib/sshpublisher'
+  namespace :rubyforge do
+    
+    desc "Release gem and RDoc documentation to RubyForge"
+    task :release => ["rubyforge:release:gem", "rubyforge:release:docs"]
+    
+    namespace :release do
+      desc "Publish RDoc to RubyForge."
+      task :docs => [:rdoc] do
+        config = YAML.load(
+          File.read(File.expand_path('~/.rubyforge/user-config.yml'))
+        )
+
+        host = "#{config['username']}@rubyforge.org"
+        remote_dir = "/var/www/gforge-projects/johntrupiano/capistrano-extensions/"
+        local_dir = 'rdoc'
+
+        Rake::SshDirPublisher.new(host, remote_dir, local_dir).upload
+      end
+    end
+  end
+rescue LoadError
+  puts "Rake SshDirPublisher is unavailable or your rubyforge environment is not configured."
+end
