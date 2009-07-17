@@ -1,5 +1,5 @@
 === v0.1.8 / 2009-04-27
-* Add two-level caching for syncing of content and database content.  First cache is locally in :tmp_dir (defaults to tmp/capistrano/), second is on the server in #{shared_path}
+* Add two-level caching for syncing of content and database content.  First cache is locally in :tmp_dir (defaults to tmp/cap/), second is on the server in #{shared_path}
 * When syncing the database, automatically drop the target database (after backing it up) to eliminate the need to manually run rake db:drop db:create on the target server.
 * Add util::tmp::check, which will alert you with red messages when your local cache grows too big (> 50MB or > 10 files)
 * Expose :store_remote_backups and :store_dev_backups to turn on/off data/content backup when syncing.
