@@ -23,6 +23,7 @@ namespace :remote do
 
       pass_str = pluck_pass_str(db)
       run "#{unzip} -c #{remote_file}.#{zip_ext} > #{remote_file}"
+      run "cd #{current_path} && rake RAILS_ENV=#{rails_env} db:drop db:create"
       run "mysql -u#{db['username']} #{pass_str} #{db['database']} < #{remote_file}"
       run "rm -f #{remote_file}"
     end
