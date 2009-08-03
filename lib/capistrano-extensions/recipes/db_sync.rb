@@ -91,6 +91,7 @@ namespace :local do
     end
     cmd << <<-CMD
       #{unzip} -c #{remote_backup_file}.#{zip_ext} > #{remote_backup_file} &&
+      rake RAILS_ENV=#{env} db:drop db:create &&
       #{mysql_str} < #{remote_backup_file} && 
       rm -f #{remote_backup_file}
     CMD
