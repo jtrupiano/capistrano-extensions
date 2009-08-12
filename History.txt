@@ -1,5 +1,5 @@
-=== v0.1.9 / Unreleased
-* * When syncing data remotely, drop the target database before importing the source database.  Previously, errors would occur during migration when the pending migration set included a table rename.  This is due to the fact that mysqldump only creates DROP TABLE statements for tables that actually exist.
+=== v0.1.9 / 2009-08-12
+* When syncing data remotely and locally, drop the target database before importing the source database.  Previously, errors would occur during migration when the pending migration set included a table rename.  This is due to the fact that mysqldump only creates DROP TABLE statements for tables that actually exist.
 
 === v0.1.8 / 2009-04-27
 * Add two-level caching for syncing of content and database content.  First cache is locally in :tmp_dir (defaults to tmp/cap/), second is on the server in #{shared_path}
